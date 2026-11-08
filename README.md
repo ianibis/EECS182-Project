@@ -1,4 +1,4 @@
-# EECS_182 final project data: NHP (Butters), 64-channel LFP under AM epidural stimulation
+# EECS 182 final project data: NHP (Butters), 64-channel LFP under AM epidural stimulation
 
 This dataset contains motor cortex LFP recordings for decoding hand movement during epidural amplitude-modulated stimulation (eACS) and without stimulation. It covers 70 sessions from one rhesus macaque (Butters), recorded with a 64-channel array over 26 days (2025-05-20 to 2025-07-11). Each session includes LFP, stimulation signals, a trial table, and hand kinematics from DeepLabCut. Stimulation sessions also have a PARRM-cleaned copy of the LFP.
 
@@ -31,7 +31,7 @@ The task is a sequence of five touchscreen targets. Butters holds a button until
 | `manifest.csv` | One row per session: condition, counts, timing, quality, known problems |
 | `conditions_eACS_AM-kHz_v2.csv` | All 102 candidate sessions with inclusion decisions, exclusion reasons and `qc_flag` |
 | `splits.json` | Train, validation and test days and sessions; held-out trials; calibration subsets (see Splits) |
-| `butters_loader_v2.py` | Python loader (see Loader) |
+| `EECS182_NHP_data_loader.py` | Python loader (see Loader) |
 | `session_summary.csv` | DeepLabCut export summary per session (confidence per keypoint, Start and Target positions, rest positions, reach endpoints) |
 | `export_outputs/<session>.h5` | Continuous LFP, stimulation signals, task samples and video frame times for one session |
 | `export_outputs/trials/<session>_trials.csv` | One row per trial |
@@ -45,7 +45,7 @@ The task is a sequence of five touchscreen targets. Butters holds a button until
 | `parrm_outputs/template_library.h5` | One group per stimulation session: mean stimulation-locked waveform per channel and its gains |
 | `parrm_outputs/parrm_summary.csv`, `figures/` | Per-session PARRM results and figures |
 | `features/<source>_<reference>/<session>.h5` | LMP and band power per channel and 50 ms bin (see Features); `export_none`, `parrm_none` and `export_car` computed |
-| `butters_features_v1.py` | Computes and loads the features |
+| `EECS182_NHP_features.py` | Computes and loads the features |
 
 The kinematics exports are under `kinematics_v3/`, in `bins50ms/`, `frames/`, and `reaches/`.
 
@@ -219,12 +219,12 @@ The splits support a comparison of in-context adaptation, fine-tuning, LoRA, and
 
 `make_splits_v1.py` regenerates the splits and checks that no day or session appears in more than one partition.
 
-## Loader (`butters_loader_v2.py`)
+## Loader (`EECS182_NHP_data_loader.py`)
 
 Dependencies: numpy, pandas, h5py, and matplotlib.
 
 ```python
-import butters_loader_v2 as L
+import EECS182_NHP_data_loader as L
 
 P = L.Paths(root='.../EECS282_finalProject', kin_dir='.../kinematics_v3/bins50ms')
 M, S = L.load_manifest(P), L.load_splits(P)
@@ -252,7 +252,7 @@ L.plot_all_on_off_spectra(P, overwrite=True)            # one figure per session
 - **Bins:** all signals use the same TDT grid. Bin `j` covers `[0.05*j, 0.05*(j+1))` seconds. A fixed window has `round((pre + post) / 0.05)` bins; `until='t_reward'` instead ends the window at reward plus `post`.
 - **Spectra:** each figure shows median channel power during trials (go - 0.5 s through reward + 0.5 s). The current session has a thick line; other sessions from the same day are dashed (black OFF, red 3 Hz, blue 20 Hz). The grey line is between-trial, stimulation-off power from the current session. Welch PSD uses 1 s Hann windows with 50% overlap, restricted to complete windows within each period.
 
-## Features (`features/`, `butters_features_v1.py`)
+## Features (`features/`, `EECS182_NHP_features.py`)
 
 Features are saved once per session and preprocessing variant, named `<source>_<reference>` as in the loader. `export_none` (default), `parrm_none`, and `export_car` are computed for all 70 sessions. The script can also generate `parrm_car`. In no-stim sessions, `parrm_none` is the same as `export_none` (attribute `source = 'export'`).
 
@@ -270,7 +270,7 @@ Frequency bands follow Flint et al. (2012) and later LFP decoding work, with fin
 Each feature HDF5 file has `bin_id` (B), `t_bin` (B, start time in seconds), `lmp` (C, B), `logpow` (C, 7, B), `channel_ids` (C), and attributes describing the bands, windows, source, reference, and feature definitions.
 
 ```python
-import butters_features_v1 as F
+import EECS182_NHP_features as F
 f = F.load_features('Butters-250606-104043', P, variant='export_none')   # X: (bins, 35, 8), robust z per channel and feature
 rows = lambda part: s.trials[s.trials.trial.isin(L.split_trials(S, s, part))]
 f = F.load_features(s.name, P, normalize='pool', trials=rows('pool'))   # statistics from the calibration pool only
@@ -281,5 +281,4 @@ X, Y, valid, bins = F.trial_arrays(f, rows('query'), kin=K, align='t_go', pre=0.
 - **Normalization:** median and 1.4826 × MAD per channel and feature, estimated from the first-go to last-reward interval (± 1 s). For held-out sessions, `normalize='pool'` computes statistics only from the calibration pool, not the query trials.
 - **`valid`:** False wherever a feature or target is NaN. Mask these bins in both the loss and the metric.
 - **Recording reference vs CAR:** this choice is still open. The recording reference is the default, with CAR as an ablation. Ahmadi et al. (2021) reported the best LMP decoding with CAR in macaque M1, while Young et al. (2018) found linear regression reference better for stimulation artifacts. Shirhatti et al. (2016) also showed that referencing changes PSD slopes and phase. Because the kept channels share much of their signal, CAR could remove movement information here. The first baseline compares `export_none` and `export_car` on validation days; the result will replace this note.
-- **Compute:** run `python butters_features_v1.py --variants export_none parrm_none`. Each variant takes about 6.5 s per session. Existing files are skipped unless `--overwrite` is supplied.
-
+- **Compute:** run `python EECS182_NHP_features.py --variants export_none parrm_none`. Each variant takes about 6.5 s per session. Existing files are skipped unless `--overwrite` is supplied.
