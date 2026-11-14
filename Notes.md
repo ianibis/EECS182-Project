@@ -18,9 +18,9 @@ On Mac or Linux, use `.venv/bin/pip` and `.venv/bin/python` instead.
 Then run the scripts from the repository root. All Task 3 code is in the `task3/` folder, and each script saves CSV files to `results/task3/`:
 
 ```
-.venv\Scripts\python task3/task3_1_ridge.py                  # Task 3.1 with the default settings
+.venv\Scripts\python task3/task3_1_ridge.py                  # Task 3.1 with the default settings (9 lags)
 .venv\Scripts\python task3/task3_1_ridge.py --lags 19        # longer history (we also tried 14 and 29)
-.venv\Scripts\python task3/task3_1_ridge.py --features bands # band power only, no LMP
+.venv\Scripts\python task3/task3_1_ridge_within_session.py   # Task 3.1 same-day check (accepts --lags)
 .venv\Scripts\python task3/task3_1_xgboost.py --device cuda  # Task 3.1 with XGBoost (drop --device cuda without an NVIDIA GPU)
 .venv\Scripts\python task3/task3_2_parrm.py                  # Task 3.2 (same options as 3.1)
 .venv\Scripts\python task3/task3_3_stif.py                   # Task 3.3 (accepts --lags)
@@ -29,8 +29,14 @@ Then run the scripts from the repository root. All Task 3 code is in the `task3/
 ## Terms used below
 
 - **ON and OFF trials.** ON trials are recorded while stimulation is running; OFF trials have no stimulation. In a stimulation session all 50 trials are ON, so OFF trials only come from the no-stim sessions.
-- **Calibration pool and query trials.** Each validation and test session has 50 trials in 5 blocks of 10. The first 20 trials (blocks 1 and 2) are the calibration pool. The last 30 (blocks 3 to 5) are the query trials. Every R² in these notes is computed on the query trials, the same trials the later methods (fine-tuning, LoRA, in-context learning) are scored on, so our numbers line up with theirs.
-- **R².** How close the predicted velocity is to the real one. 1 means perfect, 0 means no better than always guessing the average velocity, and below 0 means worse than that. We compute it separately for sideways (vx) and up-down (vy) velocity and report the average.
+- **Calibration pool and query trials.** Each validation and test session has 50 trials in 5 blocks of 10. The first 20 trials (blocks 1 and 2) are the calibration pool. The last 30 (blocks 3 to 5) are the query trials. Every validation and test R² in these notes is computed on the 30 query trials, the same trials the later methods (fine-tuning, LoRA, in-context learning) are scored on, so our numbers line up with theirs. The only exception is the same-day check in Task 3.1, which scores held-out blocks of training sessions.
+- **Validation.** λ (and, for XGBoost, the tree depth and number of trees) is always chosen on the 3 validation days. Each training session also has one block of 10 trials set aside in `splits.json` (`train_val_trials`). We don't train on it, and we don't use it for validation either.
+- **R².** How close the predicted velocity is to the real one. 1 means perfect, 0 means no better than always guessing the average velocity, and below 0 means worse than that. For each session, we compute it in three steps:
+  1. Pool all valid 50 ms time steps from the session's 30 query trials. A time step is valid when its features and its velocity are both available.
+  2. Compute one R² for sideways velocity (vx) and one R² for up-down velocity (vy), each over all of the pooled time steps.
+  3. The session's R² is the average of the R² for vx and the R² for vy.
+
+  We never compute R² for a single trial. When a table gives one R² for several sessions (for example, the 3 validation sessions), it's the average of the sessions' R² values.
 - **LMP and band power.** The two kinds of features the decoder reads from each channel. LMP (local motor potential) is the slow average voltage over the last quarter second. Band power is how strong the signal is in each of 7 frequency ranges, such as 13 to 30 Hz.
 - **Lags (history).** How many earlier 50 ms time steps the decoder sees in addition to the current one. 9 lags means half a second of signal in total.
 - **λ (lambda).** The strength of the ridge penalty. A larger λ keeps the decoder's weights small and pushes its guesses toward the average.
@@ -40,7 +46,7 @@ Then run the scripts from the repository root. All Task 3 code is in the `task3/
 
 ### What we did
 
-We trained a ridge decoder that predicts fingertip velocity from the brain signal, one prediction every 50 ms. It only ever saw OFF trials during training: 40 trials from each of the 13 no-stim sessions on training days, about 17,600 time steps in total. The three July 11 sessions were left out because they have no velocity in cm/s.
+We trained a ridge decoder that predicts fingertip velocity from the brain signal, one prediction every 50 ms. It reads LMP and the 7 band powers from every channel. It only ever saw OFF trials during training: 40 trials from each of the 13 no-stim sessions on training days, about 17,600 time steps in total. The three July 11 sessions were left out because they have no velocity in cm/s.
 
 For each trial, the decoder looks at the window from half a second before the go cue to 1.5 seconds after it. Features are normalized within each session, so sessions with louder or quieter recordings become comparable. For validation and test sessions, the normalization is computed from the first 20 trials only, so the graded trials stay untouched. After normalizing, we cap every value at ±10 to protect against artifacts (see the channel 64 outlier below).
 
@@ -50,36 +56,74 @@ We tried 13 values of λ, from 1 to 1,000,000, with both the recording reference
 
 Each row of the table is one setting. "OFF R²" is the average over the 5 test-day no-stim sessions. The last two columns show the ON score, the same-day OFF score, and the difference in brackets (negative means stimulation made it worse).
 
-| Features | History | Validation R² | Chosen λ | OFF R² (test days) | 3 Hz: ON vs. OFF | 20 Hz: ON vs. OFF |
-|---|---|---|---|---|---|---|
-| Band power only | 9 lags (0.5 s) | 0.021 | 316,228 | 0.015 | 0.012 vs. 0.010 (+0.001) | 0.017 vs. 0.016 (+0.001) |
-| LMP + band power | 9 lags (0.5 s) | 0.035 | 31,623 | 0.045 | 0.025 vs. 0.048 (−0.023) | 0.016 vs. 0.028 (−0.012) |
-| LMP + band power | 14 lags (0.75 s) | 0.052 | 31,623 | 0.051 | 0.025 vs. 0.051 (−0.025) | 0.021 vs. 0.032 (−0.011) |
-| LMP + band power | 19 lags (1 s) | **0.053** | 316,228 | 0.053 | 0.031 vs. 0.046 (−0.016) | 0.029 vs. 0.041 (−0.011) |
-| LMP + band power | 29 lags (1.5 s) | 0.052 | 316,228 | 0.052 | 0.032 vs. 0.044 (−0.012) | 0.029 vs. 0.043 (−0.014) |
+| History | Validation R² | Chosen λ | OFF R² (test days) | 3 Hz: ON vs. OFF | 20 Hz: ON vs. OFF |
+|---|---|---|---|---|---|
+| 9 lags (0.5 s) | 0.035 | 31,623 | 0.045 | 0.025 vs. 0.048 (−0.023) | 0.016 vs. 0.028 (−0.012) |
+| 14 lags (0.75 s) | 0.052 | 31,623 | 0.051 | 0.025 vs. 0.051 (−0.025) | 0.021 vs. 0.032 (−0.011) |
+| 19 lags (1 s) | **0.053** | 316,228 | 0.053 | 0.031 vs. 0.046 (−0.016) | 0.029 vs. 0.041 (−0.011) |
+| 29 lags (1.5 s) | 0.052 | 316,228 | 0.052 | 0.032 vs. 0.044 (−0.012) | 0.029 vs. 0.043 (−0.014) |
 
 The main takeaway is that **the decoder is weak even without stimulation**. The best version reaches an R² of about 0.05, far below the 0.2 that slide 24 uses as the bar for "poor accuracy even without stimulation".
 
 A few other things stood out:
 
-- **LMP helps.** With half a second of history, adding LMP to band power raised validation R² from 0.021 to 0.035, and test-day OFF R² from 0.015 to 0.045.
+- **We use LMP + band power.** An earlier version also tried band power alone. It did worse (validation R² 0.021 vs. 0.035 with half a second of history), so we dropped it.
 - **More history helps a little, then stops helping.** Going from 0.5 to 0.75 seconds raised validation R² from 0.035 to 0.052. Beyond that it stays flat. One second (19 lags) scored highest on validation, but 0.75 to 1.5 seconds are practically tied.
 - **The recording reference beat CAR in every setting.** For example, 0.035 vs. 0.021 for LMP + band power with 9 lags.
 - **The decoder needs a strong penalty.** The best λ was always 31,623 or 316,228. With weaker penalties it memorizes the training trials and does worse on new ones.
-- **Stimulation costs a little accuracy, mostly at 3 Hz.** With LMP included, ON trials score about 0.01 to 0.025 lower than the same-day OFF session. At 3 Hz, ON scored lower than OFF in 7 of 7 sessions with 9 or 14 lags, 6 of 7 with 19 lags, and 5 of 7 with 29 lags. That fits the README, which says LMP is the feature most affected by 3 Hz stimulation. With band power alone there's no gap, but there's also almost nothing to lose.
+- **Stimulation costs a little accuracy, mostly at 3 Hz.** ON trials score about 0.01 to 0.025 lower than the same-day OFF session. At 3 Hz, ON scored lower than OFF in 7 of 7 sessions with 9 or 14 lags, 6 of 7 with 19 lags, and 5 of 7 with 29 lags. That fits the README, which says LMP is the feature most affected by 3 Hz stimulation.
 
 ### Why is accuracy so low?
 
 To make sure the low numbers weren't caused by a bug, we ran a few extra checks. These used throwaway scripts that aren't in the repo, were run before we added the ±10 cap, and used 9 lags.
 
-| Check | Band power | LMP + band power | What it tells us |
-|---|---|---|---|
-| Score on its own training data (λ = 100) | 0.18 | 0.26 | The decoder can partly memorize the training data, but that doesn't carry over to new trials |
-| Train on 40 trials, test on the held-out block from the same sessions | 0.022 | 0.042 | About as poor as on new days, so day-to-day drift isn't the problem |
-| A separate decoder for each session (best case) | typical 0.03, best 0.07 | typical 0.08, best 0.16 | Even the most favorable setup stays below 0.2 |
-| No brain data at all: predict the average velocity at each moment after the go cue | 0.089 | 0.089 | This beats the brain decoder |
+| Check | R² | What it tells us |
+|---|---|---|
+| Score on its own training data (λ = 100) | 0.26 | The decoder can partly memorize the training data, but that doesn't carry over to new trials |
+| Train on 40 trials, test on the held-out block from the same sessions | 0.042 | About as poor as on new days, so day-to-day drift isn't the problem |
+| No brain data at all: predict the average velocity at each moment after the go cue | 0.089 | This beats the brain decoder |
 
 The last row is the most telling. The monkey reaches for the same targets in the same order on every trial, so just knowing the time since the go cue predicts the movement better than the brain features do. That means the velocity data and the trial timing are fine. The weak link is how little velocity information these features carry.
+
+### Same-day check: does a decoder trained on the same session do better?
+
+The main decoder is trained on some days and scored on other days. Brain recordings change from day to day, so that is a hard test. To see how much the change of day costs, we also trained and scored ridge within single sessions (`task3/task3_1_ridge_within_session.py`).
+
+**How it works:**
+
+- We used each of the 14 no-stim sessions on the training days. Each session has 5 blocks of 10 trials.
+- For each session, we trained ridge on 4 blocks and scored it on the 5th. We repeated this 5 times, so every block is scored once ("leave one block out").
+- Everything else matches the main decoder: LMP + band power, the same time window, history lengths, ±10 cap, recording reference and λ values.
+- Normalization uses only the 4 training blocks, so the scored block isn't used for anything except R².
+- R² is computed as described under "Terms used below", except on the 10 trials of the scored block instead of 30 query trials. The session's R² is the average over its 5 scored blocks.
+- For each session, λ is the value that works best on the other sessions, so no session gets to pick its own λ.
+- July 11 has no velocity in cm/s, so we decoded it in pixels/s. Pixel directions follow the camera, not the screen, so July 11 is left out of the averages below. On its own, it scores 0.024 to 0.032.
+
+**Results.** "Same session" is the average of the 13 sessions with velocity in cm/s. "Across days" is the main Task 3.1 decoder from the table above.
+
+| History | Same session | Across days: validation | Across days: test-day OFF |
+|---|---|---|---|
+| 9 lags | 0.054 | 0.035 | 0.045 |
+| 14 lags | 0.071 | 0.052 | 0.051 |
+| 19 lags | **0.076** | 0.053 | 0.053 |
+| 29 lags | 0.074 | 0.052 | 0.052 |
+
+**Training on the same day helps, but only a little.** The same-session decoder scores 0.01 to 0.025 higher than the across-days decoder. The best single session reaches 0.133, and no session comes close to 0.2. So the change of day is not what keeps accuracy low.
+
+**The improvement comes entirely from sideways movement.** Here is R² split by direction, for 19 lags (the other history lengths look the same):
+
+| Decoder (19 lags) | Sideways (vx) | Up-down (vy) |
+|---|---|---|
+| Same session | 0.054 | 0.097 |
+| Across days, test-day OFF sessions | 0.012 | 0.094 |
+
+Up-down velocity is predicted equally well either way. Sideways velocity can be predicted within a session, but almost not at all across days. So sideways movement is in the brain features, but the way it shows up changes from day to day. We don't know yet whether that change is in the brain signal or in the camera calibration, which is fitted separately for each session.
+
+**The best λ is about the same as for the across-days decoder:** 31,623 for 9 and 14 lags, and 100,000 for 19 and 29 lags. Letting each session pick its own best λ would add only 0.001 to 0.003.
+
+**Even within a session, the brain decoder doesn't beat the timing-only baseline** (0.089 on the validation days), which uses no brain data at all.
+
+An earlier throwaway version of this check estimated "typical 0.08, best 0.16". It was too optimistic, and these numbers replace it.
 
 ### XGBoost (nonlinear model): does a more flexible decoder do better?
 
@@ -96,21 +140,20 @@ The diagnostics above left one question open: is the low accuracy the features' 
 
 **Results.** Each cell shows ridge first, then XGBoost. "All 19 test sessions" averages the 14 ON sessions and the 5 OFF sessions together.
 
-| Features | History | Best depth | Validation R² | Test OFF R² | 3 Hz ON R² | 20 Hz ON R² | All 19 test sessions |
-|---|---|---|---|---|---|---|---|
-| Band power only | 9 lags | 8 | 0.021 → 0.030 | 0.015 → 0.014 | 0.012 → 0.025 | 0.017 → 0.031 | 0.015 → 0.024 |
-| LMP + band power | 9 lags | 6 | 0.035 → 0.070 | 0.045 → 0.045 | 0.025 → 0.046 | 0.016 → 0.041 | 0.027 → 0.044 |
-| LMP + band power | 14 lags | 6 | 0.052 → 0.082 | 0.051 → 0.056 | 0.025 → 0.059 | 0.021 → 0.057 | 0.030 → 0.058 |
-| LMP + band power | 19 lags | 6 | 0.053 → **0.091** | 0.053 → **0.062** | 0.031 → 0.065 | 0.029 → 0.063 | 0.036 → **0.064** |
-| LMP + band power | 29 lags | 6 | 0.052 → 0.092 | 0.052 → 0.061 | 0.032 → 0.065 | 0.029 → 0.055 | 0.036 → 0.061 |
+| History | Best depth | Validation R² | Test OFF R² | 3 Hz ON R² | 20 Hz ON R² | All 19 test sessions |
+|---|---|---|---|---|---|---|
+| 9 lags | 6 | 0.035 → 0.070 | 0.045 → 0.045 | 0.025 → 0.046 | 0.016 → 0.041 | 0.027 → 0.044 |
+| 14 lags | 6 | 0.052 → 0.082 | 0.051 → 0.056 | 0.025 → 0.059 | 0.021 → 0.057 | 0.030 → 0.058 |
+| 19 lags | 6 | 0.053 → **0.091** | 0.053 → **0.062** | 0.031 → 0.065 | 0.029 → 0.063 | 0.036 → **0.064** |
+| 29 lags | 6 | 0.052 → 0.092 | 0.052 → 0.061 | 0.032 → 0.065 | 0.029 → 0.055 | 0.036 → 0.061 |
 
-**XGBoost beats ridge in every setting, but only by a little.** With LMP included, it gains about 0.03 to 0.04 on the validation days and about 0.02 to 0.03 across the 19 test sessions. With band power only, the gain is about 0.01. The best setting (LMP + band power, 19 lags, depth 6) reaches 0.091 on validation and about 0.06 on the test days, still far below the 0.2 bar.
+**XGBoost beats ridge in every setting, but only by a little.** It gains about 0.03 to 0.04 on the validation days and about 0.02 to 0.03 across the 19 test sessions. The best setting (19 lags, depth 6) reaches 0.091 on validation and about 0.06 on the test days, still far below the 0.2 bar.
 
 The validation numbers flatter XGBoost a bit, because the validation days also chose its depth and when to stop adding trees. The test days are the fair comparison, and there the gain on the OFF sessions is small (0.000 to 0.009). Most of the test-day gain comes from the ON sessions.
 
 Even the best XGBoost decoder only matches the timing-only baseline from the diagnostics (0.089 on the validation days), which uses no brain data at all.
 
-**Deeper trees memorize instead of generalizing.** Here is the depth search for the best setting (LMP + band power, 19 lags):
+**Deeper trees memorize instead of generalizing.** Here is the depth search for the best setting (19 lags):
 
 | Tree depth | Trees kept (vx / vy) | R² on its own training data | Validation R² |
 |---|---|---|---|
@@ -121,20 +164,20 @@ Even the best XGBoost decoder only matches the timing-only baseline from the dia
 | 8 | 27 / 88 | 0.518 | 0.089 |
 | 10 | 28 / 57 | 0.606 | 0.083 |
 
-Deeper trees keep fitting the training data better (up to 0.61), but validation R² peaks at depth 6 and then falls. Depth 6 won in every LMP setting, and depth 8 won with band power only.
+Deeper trees keep fitting the training data better (up to 0.61), but validation R² peaks at depth 6 and then falls. Depth 6 won at every history length.
 
-**Almost all of the signal is in up-down movement.** Splitting R² by direction shows that sideways velocity can't be predicted at all, by either model:
+**Across days, almost all of the signal is in up-down movement.** Splitting R² by direction shows that neither model can predict sideways velocity on new days:
 
-| Model (LMP + band power, 19 lags) | Sideways (vx), OFF / ON | Up-down (vy), OFF / ON |
+| Model (19 lags) | Sideways (vx), OFF / ON | Up-down (vy), OFF / ON |
 |---|---|---|
 | Ridge | 0.012 / −0.015 | 0.094 / 0.074 |
 | XGBoost | 0.003 / −0.002 | 0.121 / 0.130 |
 
-This is also why the vx models stop after only a handful of trees: there's almost nothing to learn. Even up-down velocity on its own stays below 0.2. We don't know yet whether sideways movement is truly absent from the brain signal or just hard to measure from a side-view camera.
+This is also why the vx models stop after only a handful of trees: there's almost nothing to learn that carries over to new days. Even up-down velocity on its own stays below 0.2. Sideways movement isn't missing from the brain signal, though: the same-day check above predicts it with an R² of about 0.05. It just doesn't carry over from one day to the next.
 
 **ON vs. OFF looks different at the two frequencies.**
 
-- **At 3 Hz the pattern matches ridge.** ON scores 0.009 to 0.018 below the same-day OFF session in the LMP settings, lower in 5 or 6 of the 7 sessions.
+- **At 3 Hz the pattern matches ridge.** ON scores 0.009 to 0.018 below the same-day OFF session, lower in 5 or 6 of the 7 sessions.
 - **At 20 Hz, ON appears to score higher than OFF** (by 0.026 to 0.037). That's not stimulation helping. Four of the seven 20 Hz sessions share one OFF reference, 250616-101326, which XGBoost happens to decode poorly (R² between −0.015 and 0.028 depending on the setting), so the comparison is dragged by one weak session.
 - **XGBoost improved the ON sessions more than the OFF sessions,** compared with ridge. It may cope with stimulation-induced changes in the features a little better, but with this few sessions we can't separate that from noise.
 
@@ -150,7 +193,7 @@ This 20 Hz test-day session has a very large voltage spike on **channel 64** dur
 
 It's far too big to be brain activity. The LMP on that channel reaches about 78,700 µV in trial 45, then −4,670 µV in trial 46 and −1,500 µV in trial 47. Normal LMP values are tens to hundreds of µV. After normalization, the peak is about 5,300, when clean values stay within about ±10. The manifest doesn't mention this artifact: its `known_problems` entry for this session only notes a disagreement about the stimulation frequency.
 
-Before we handled it, this one artifact dragged the session's R² down to −0.71 (LMP + band power, 9 lags), enough to pull the whole 20 Hz average below zero. Dropping just the 86 affected time steps brought it back to 0.043, in line with the other sessions. The band-power-only decoder barely noticed (R² 0.030), because the artifact shows up mainly in the LMP.
+Before we handled it, this one artifact dragged the session's R² down to −0.71 (LMP + band power, 9 lags), enough to pull the whole 20 Hz average below zero. Dropping just the 86 affected time steps brought it back to 0.043, in line with the other sessions. The band-power-only decoder we tried earlier barely noticed (R² 0.030), because the artifact shows up mainly in the LMP.
 
 **How we handle it:** after normalization, every feature value is capped at ±10 (`CLIP_Z` in `task3/task3_common.py`), in every session, for both training and evaluation. With the cap, this session scores 0.040.
 
@@ -170,13 +213,12 @@ One note for later: if CAR ever wins the reference comparison, there's no cleane
 
 For each frequency, the table shows the same-day OFF score, the ON score without cleaning, and the ON score with cleaning. "Cleaning effect" is how much PARRM changed the ON score, and in how many of the 7 sessions it improved things.
 
-| Features | History | 20 Hz: OFF / ON / ON cleaned | Cleaning effect, 20 Hz | 3 Hz: OFF / ON / ON cleaned | Cleaning effect, 3 Hz |
-|---|---|---|---|---|---|
-| LMP + band power | 9 lags | 0.028 / 0.016 / 0.017 | +0.001 (better in 3 of 7) | 0.048 / 0.025 / 0.025 | 0.000 (better in 4 of 7) |
-| LMP + band power | 14 lags | 0.032 / 0.021 / 0.022 | +0.001 (better in 4 of 7) | 0.051 / 0.025 / 0.024 | −0.001 (better in 3 of 7) |
-| LMP + band power | 19 lags | 0.041 / 0.029 / 0.031 | +0.002 (better in 4 of 7) | 0.046 / 0.031 / 0.030 | 0.000 (better in 4 of 7) |
-| LMP + band power | 29 lags | 0.043 / 0.029 / 0.030 | +0.001 (better in 4 of 7) | 0.044 / 0.032 / 0.032 | 0.000 (better in 4 of 7) |
-| Band power only | 9 lags | 0.016 / 0.017 / 0.018 | +0.001 (better in 2 of 7) | 0.010 / 0.012 / 0.012 | +0.001 (better in 3 of 7) |
+| History | 20 Hz: OFF / ON / ON cleaned | Cleaning effect, 20 Hz | 3 Hz: OFF / ON / ON cleaned | Cleaning effect, 3 Hz |
+|---|---|---|---|---|
+| 9 lags | 0.028 / 0.016 / 0.017 | +0.001 (better in 3 of 7) | 0.048 / 0.025 / 0.025 | 0.000 (better in 4 of 7) |
+| 14 lags | 0.032 / 0.021 / 0.022 | +0.001 (better in 4 of 7) | 0.051 / 0.025 / 0.024 | −0.001 (better in 3 of 7) |
+| 19 lags | 0.041 / 0.029 / 0.031 | +0.002 (better in 4 of 7) | 0.046 / 0.031 / 0.030 | 0.000 (better in 4 of 7) |
+| 29 lags | 0.043 / 0.029 / 0.030 | +0.001 (better in 4 of 7) | 0.044 / 0.032 / 0.032 | 0.000 (better in 4 of 7) |
 
 **PARRM cleaning recovers almost none of the lost accuracy.** At 20 Hz it closes only about 6 to 16% of the gap between ON and OFF. At 3 Hz it closes none of it. Session by session, cleaning helps about half the time and hurts the other half, which is what you'd expect from random noise.
 
@@ -222,6 +264,7 @@ One limit: this was a linear check with simple features. It's strong evidence, b
 Our results match **outcome 3 on slide 24: poor accuracy even without stimulation.**
 
 - The best decoder without stimulation only reaches an R² of about 0.05 with ridge. That's after the two improvements slide 24 suggests: we added LMP and longer history, and per-session normalization was already in place. A nonlinear decoder (XGBoost) raises this only to about 0.06 on the test days (0.09 on the validation days).
+- A ridge decoder trained and scored within the same session only reaches about 0.05 to 0.08, so the change of day isn't what keeps accuracy low. The only thing that improves within a session is sideways velocity.
 - Stimulation costs only about 0.01 to 0.025 in R². Some of that may be due to recording order rather than the stimulation itself, and PARRM cleaning recovers almost none of it.
 - The stimulation signal on its own predicts nothing.
 

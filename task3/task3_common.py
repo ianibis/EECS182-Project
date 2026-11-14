@@ -45,10 +45,10 @@ KIN_COLS = ('Index_vx_cm', 'Index_vy_cm')  # fingertip velocity, cm/s
 # 250616-102853 reaches z ≈ 5300). Clean data stays well inside this range.
 CLIP_Z = 10.0
 
-FEATURE_SETS = {
-    'bands': [name for name in F.FEATURE_NAMES if name.startswith('pow_')],  # 7 band powers
-    'lmp+bands': list(F.FEATURE_NAMES),                                      # LMP + 7 band powers
-}
+# Decoder inputs for every channel: LMP + the 7 band powers. (A band-power-only
+# decoder was dropped: it scored lower, validation R² 0.021 vs. 0.035 with 9 lags.)
+FEATURES = list(F.FEATURE_NAMES)  # ['lmp', 'pow_1_4', ..., 'pow_130_200']
+FEATURE_SET = 'lmp+bands'         # label written to the result files
 
 
 # ---------------------------------------------------------------- metadata
@@ -114,12 +114,13 @@ def kinematics(session):
 
 # ---------------------------------------------------------------- arrays
 
-def session_arrays(session, variant, part, feature_set='bands', n_lags=N_LAGS):
+def session_arrays(session, variant, part, n_lags=N_LAGS):
     """Decoder inputs and target velocities for one session's trials.
 
     Returns X (n, d) and Y (n, 2) with one row per 50 ms bin that has both
-    finite features and finite velocity. d = (n_lags + 1) * channels * features:
-    each bin sees its own features plus those of the n_lags bins before it.
+    finite features and finite velocity. d = (n_lags + 1) * channels * 8
+    features (LMP + 7 band powers): each bin sees its own features plus those
+    of the n_lags bins before it.
 
     Features are z-scored within the session, then clipped to ±CLIP_Z.
     Validation and test sessions take the statistics from their calibration
@@ -128,19 +129,17 @@ def session_arrays(session, variant, part, feature_set='bands', n_lags=N_LAGS):
     """
     norm_rows = trial_rows(session, 'pool') if session in splits()['calibration'] else None
     feat = F.load_features(session, PATHS, variant=variant, normalize=True, trials=norm_rows)
-
-    keep = [feat['feature_names'].index(name) for name in FEATURE_SETS[feature_set]]
-    X_clipped = np.clip(feat['X'][:, :, keep], -CLIP_Z, CLIP_Z)  # NaN stays NaN
-    feat = dict(feat, X=X_clipped, feature_names=FEATURE_SETS[feature_set])
+    assert feat['feature_names'] == FEATURES
+    feat = dict(feat, X=np.clip(feat['X'], -CLIP_Z, CLIP_Z))  # NaN stays NaN
 
     X, Y, valid, _ = F.trial_arrays(feat, trial_rows(session, part), kin=kinematics(session),
                                     align=ALIGN, pre=PRE, post=POST, n_lags=n_lags, kin_cols=KIN_COLS)
     return X[valid], Y[valid]
 
 
-def stack_arrays(session_list, variant, part, feature_set='bands', n_lags=N_LAGS):
+def stack_arrays(session_list, variant, part, n_lags=N_LAGS):
     """session_arrays() for several sessions, concatenated."""
-    pairs = [session_arrays(s, variant, part, feature_set, n_lags) for s in session_list]
+    pairs = [session_arrays(s, variant, part, n_lags) for s in session_list]
     return np.concatenate([x for x, _ in pairs]), np.concatenate([y for _, y in pairs])
 
 
@@ -180,6 +179,35 @@ class RidgeFitter:
         return RidgeModel(W=W, b=self.y_mean - self.x_mean @ W, lam=float(lam))
 
 
+def ridge_path(X, Y, lambdas):
+    """The same ridge fit as RidgeFitter, for every λ in lambdas at once.
+
+    One eigendecomposition serves every λ. With fewer rows than inputs (one
+    session: ~1,300-2,000 bins vs. 2,800+ inputs) it uses the n x n matrix
+    X Xᵀ = Q E Qᵀ (X, Y centered) and the equivalent form
+    W(λ) = Xᵀ (X Xᵀ + λI)⁻¹ Y = Xᵀ Q (E + λ)⁻¹ Qᵀ Y; otherwise the d x d
+    matrix Xᵀ X. Returns a list of RidgeModel.
+    """
+    x_mean = X.mean(axis=0, dtype=np.float64)
+    y_mean = Y.mean(axis=0, dtype=np.float64)
+    Xc = X.astype(np.float64) - x_mean
+    Yc = Y.astype(np.float64) - y_mean
+    if len(Xc) <= Xc.shape[1]:
+        e, Q = np.linalg.eigh(Xc @ Xc.T)
+        weights = lambda q: Xc.T @ (Q @ q)
+        qty = Q.T @ Yc
+    else:
+        e, Q = np.linalg.eigh(Xc.T @ Xc)
+        weights = lambda q: Q @ q
+        qty = Q.T @ (Xc.T @ Yc)
+    e = np.maximum(e, 0.0)  # remove tiny negative rounding errors
+    models = []
+    for lam in lambdas:
+        W = weights(qty / (e + lam)[:, None])
+        models.append(RidgeModel(W=W, b=y_mean - x_mean @ W, lam=float(lam)))
+    return models
+
+
 def r2(Y, Y_pred):
     """R² for each velocity axis (vx, vy).
 
@@ -198,37 +226,39 @@ LAMBDAS = np.logspace(0, 6, 13)                # 1 to 10^6, half-decade steps
 PARRM_VARIANT = {'export_none': 'parrm_none', 'export_car': 'parrm_car'}  # cleaned counterpart
 
 
-def run_tag(feature_set, n_lags):
+def run_tag(n_lags):
     """File-name tag for one setting, e.g. 'lmp_bands_lags9'."""
-    return f"{feature_set.replace('+', '_')}_lags{n_lags}"
+    return f"{FEATURE_SET.replace('+', '_')}_lags{n_lags}"
 
 
-def fit_off_decoder(feature_set, n_lags=N_LAGS):
+def fit_off_decoder(n_lags=N_LAGS):
     """Train the OFF decoder and choose λ and the reference on the validation days.
 
     Fits on the 'train' trials of the training-day no-stim sessions (July 11
-    excluded: no cm/s velocity), scores every (reference, λ) by the mean R²
-    over the query trials of the validation-day no-stim sessions, and refits
-    the best one. Returns dict(model, reference, lam, search).
+    excluded: no cm/s velocity; each session's held-out block in
+    splits.json's train_val_trials is not used). Validation is the 3
+    validation days: every (reference, λ) is scored by the mean R² over the
+    query trials (blocks 3-5) of the validation-day no-stim sessions, and the
+    best one is refit. Returns dict(model, reference, lam, search).
     """
     train_sessions = [s for s in sessions('train', 'no_stim') if has_cm_velocity(s)]
     val_sessions = sessions('val', 'no_stim')
-    print(f'Features: {feature_set} ({", ".join(FEATURE_SETS[feature_set])}), '
+    print(f'Features: LMP + 7 band powers ({", ".join(FEATURES)}), '
           f'history: {n_lags} earlier bins ({(n_lags + 1) * 50} ms including the current bin)')
     print(f'Training on {len(train_sessions)} OFF sessions (training days, held-out block excluded); '
           f'choosing lambda on {len(val_sessions)} validation-day OFF sessions.')
 
     rows, fitters = [], {}
     for variant in REFERENCES:
-        X, Y = stack_arrays(train_sessions, variant, 'train', feature_set, n_lags)
+        X, Y = stack_arrays(train_sessions, variant, 'train', n_lags)
         fitters[variant] = RidgeFitter(X, Y)
         print(f'  {variant}: {X.shape[0]:,} training bins x {X.shape[1]:,} inputs')
         del X, Y
-        val = {s: session_arrays(s, variant, 'query', feature_set, n_lags) for s in val_sessions}
+        val = {s: session_arrays(s, variant, 'query', n_lags) for s in val_sessions}
         for lam in LAMBDAS:
             model = fitters[variant].fit(lam)
             per_session = {s: r2(Yv, model.predict(Xv)).mean() for s, (Xv, Yv) in val.items()}
-            rows.append(dict(feature_set=feature_set, n_lags=n_lags, reference=variant, lam=lam,
+            rows.append(dict(feature_set=FEATURE_SET, n_lags=n_lags, reference=variant, lam=lam,
                              val_r2_mean=np.mean(list(per_session.values())),
                              **{f'val_r2_{s}': v for s, v in per_session.items()}))
 
@@ -252,8 +282,8 @@ def print_lambda_search(search):
     print(f'Chosen: reference = {chosen.reference}, lambda = {chosen.lam:g}')
 
 
-def score_session(model, session, variant, feature_set, n_lags=N_LAGS):
-    """R² of a fitted decoder on one session's query trials (mean and per axis)."""
-    X, Y = session_arrays(session, variant, 'query', feature_set, n_lags)
+def score_session(model, session, variant, n_lags=N_LAGS):
+    """R² of a fitted decoder on one session's query trials, blocks 3-5 (mean and per axis)."""
+    X, Y = session_arrays(session, variant, 'query', n_lags)
     r2_vx, r2_vy = r2(Y, model.predict(X))
     return dict(r2=(r2_vx + r2_vy) / 2, r2_vx=r2_vx, r2_vy=r2_vy, n_bins=len(X))
