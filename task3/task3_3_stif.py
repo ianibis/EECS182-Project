@@ -16,7 +16,7 @@ Same trial window, lags, clipping and λ grid as Task 3.1. Trained on the
 training-day stimulation sessions, λ chosen on the validation-day stimulation
 sessions, scored on the query trials of the test-day stimulation sessions.
 
-Run:  python task3_3_stif.py --lags 9
+Run (from the repository root):  python task3/task3_3_stif.py --lags 9
 Writes results/task3/task3_3_lambda_search_lags<N>.csv and
 task3_3_test_results_lags<N>.csv.
 """
@@ -30,8 +30,8 @@ import h5py
 import numpy as np
 import pandas as pd
 
-import EECS182_NHP_features as F
-import task3_common as C
+import task3_common as C  # import first: it puts the repository root on sys.path
+import EECS182_NHP_features as F  # noqa: E402
 
 STIF_FEATURES = ('env_mean', 'env_sd', 'phase_sin', 'phase_cos', 'on_frac')
 NORMALIZED = (0, 1)  # env_mean and env_sd are in uncalibrated monitor units

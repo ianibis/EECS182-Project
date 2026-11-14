@@ -8,9 +8,10 @@
 3. With those choices fixed, report R² on the query trials of every test-day
    stimulation-ON session and of its same-day OFF session.
 
-Run:  python task3_1_ridge.py --features lmp+bands     (LMP + 7 band powers)
-      python task3_1_ridge.py --features bands         (7 band powers only)
-      python task3_1_ridge.py --lags 19                (1 s of feature history)
+Run (from the repository root):
+      python task3/task3_1_ridge.py --features lmp+bands     (LMP + 7 band powers)
+      python task3/task3_1_ridge.py --features bands         (7 band powers only)
+      python task3/task3_1_ridge.py --lags 19                (1 s of feature history)
 Writes results/task3/task3_1_lambda_search_<features>_lags<N>.csv and
 task3_1_test_results_<features>_lags<N>.csv.
 """

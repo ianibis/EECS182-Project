@@ -6,7 +6,7 @@ file, so their PARRM features are identical to the raw ones and the decoder
 does not change. Only the test-day stimulation-ON sessions are scored twice:
 on raw features (as in 3.1) and on PARRM-cleaned features.
 
-Run:  python task3_2_parrm.py --features lmp+bands --lags 9
+Run (from the repository root):  python task3/task3_2_parrm.py --features lmp+bands --lags 9
 Writes results/task3/task3_2_test_results_<features>_lags<N>.csv.
 """
 
@@ -32,9 +32,9 @@ def main(feature_set, n_lags):
     model, raw_variant = decoder['model'], decoder['reference']
     clean_variant = C.PARRM_VARIANT[raw_variant]
     if not os.path.isdir(os.path.join(C.DATA, 'features', clean_variant)):
-        raise SystemExit(f'Missing data/features/{clean_variant}/. Compute it (about 5 minutes) with:\n'
-                         f'  python -c "import task3_common as C, EECS182_NHP_features as F; '
-                         f"F.compute_all(C.PATHS, variants=['{clean_variant}'])\"")
+        raise SystemExit(f'Missing data/features/{clean_variant}/. Compute it from the task3 folder with:\n'
+                         f'  python -c "import task3_common as C; '
+                         f"C.F.compute_all(C.PATHS, variants=['{clean_variant}'])\"")
     print(f'\nScoring ON sessions on raw features ({raw_variant}) and PARRM-cleaned features ({clean_variant}).')
 
     # ---- Test days: ON raw vs. ON cleaned vs. same-day OFF

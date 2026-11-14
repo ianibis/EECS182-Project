@@ -6,7 +6,7 @@ These notes summarize what we found in Task 3, the "problem size check". The que
 
 The `results/` folder isn't on GitHub, so you'll need to run the scripts yourself. First, one-time setup:
 
-1. Unzip the shared data into a `data/` folder in the repo. The expected folder names are listed in `PATHS` at the top of `task3_common.py`.
+1. Unzip the shared data into a `data/` folder in the repo. The expected folder names are listed in `PATHS` at the top of `task3/task3_common.py`.
 2. Create the virtual environment and install the packages:
    ```
    python -m venv .venv
@@ -15,14 +15,15 @@ The `results/` folder isn't on GitHub, so you'll need to run the scripts yoursel
 
 On Mac or Linux, use `.venv/bin/pip` and `.venv/bin/python` instead.
 
-Then run the scripts. Each one takes about 1 to 2 minutes and saves CSV files to `results/task3/`:
+Then run the scripts from the repository root. All Task 3 code is in the `task3/` folder, and each script saves CSV files to `results/task3/`:
 
 ```
-.venv\Scripts\python task3_1_ridge.py                  # Task 3.1 with the default settings
-.venv\Scripts\python task3_1_ridge.py --lags 19        # longer history (we also tried 14 and 29)
-.venv\Scripts\python task3_1_ridge.py --features bands # band power only, no LMP
-.venv\Scripts\python task3_2_parrm.py                  # Task 3.2 (same options as 3.1)
-.venv\Scripts\python task3_3_stif.py                   # Task 3.3 (accepts --lags)
+.venv\Scripts\python task3/task3_1_ridge.py                  # Task 3.1 with the default settings
+.venv\Scripts\python task3/task3_1_ridge.py --lags 19        # longer history (we also tried 14 and 29)
+.venv\Scripts\python task3/task3_1_ridge.py --features bands # band power only, no LMP
+.venv\Scripts\python task3/task3_1_xgboost.py --device cuda  # Task 3.1 with XGBoost (drop --device cuda without an NVIDIA GPU)
+.venv\Scripts\python task3/task3_2_parrm.py                  # Task 3.2 (same options as 3.1)
+.venv\Scripts\python task3/task3_3_stif.py                   # Task 3.3 (accepts --lags)
 ```
 
 ## Terms used below
@@ -80,6 +81,65 @@ To make sure the low numbers weren't caused by a bug, we ran a few extra checks.
 
 The last row is the most telling. The monkey reaches for the same targets in the same order on every trial, so just knowing the time since the go cue predicts the movement better than the brain features do. That means the velocity data and the trial timing are fine. The weak link is how little velocity information these features carry.
 
+### XGBoost (nonlinear model): does a more flexible decoder do better?
+
+The diagnostics above left one question open: is the low accuracy the features' fault, or the linear decoder's? To test that, we swapped ridge for XGBoost, a gradient-boosted trees model that can pick up curved relationships and interactions between features. Everything else stayed the same as for ridge: training trials, time window, normalization, the ±10 cap, the validation days and the test design.
+
+**How it's set up** (`task3/task3_1_xgboost.py`):
+
+- One model predicts sideways velocity (vx) and a second predicts up-down velocity (vy).
+- Each tree sees a random 80% of the training time steps and a random 30% of the inputs, and every leaf must cover at least 20 time steps. Both choices help against overfitting.
+- Trees are added one at a time, up to 2,000, and training stops once the score on the validation-day OFF sessions stops improving ("early stopping"). We deliberately don't use XGBoost's usual random hold-out of training time steps: neighboring 50 ms steps are near-copies of each other, so a random hold-out would leak and make the model look better than it is.
+- We tried tree depths 2, 3, 4, 6, 8 and 10 and kept the one with the best validation R². Depth 10 never won, so the script now tries depths 2 to 8 by default. To include it again, run with `--depths 2 3 4 6 8 10`.
+- The script runs on the CPU by default, or on an NVIDIA GPU with `--device cuda`. GPU and CPU runs don't build exactly the same trees, and the random sampling of time steps and inputs also varies, so scores can differ slightly from run to run. Treat differences of a few thousandths as noise.
+- Deep trees with long histories need a lot of memory. If a depth doesn't fit on the GPU, the script retrains it on the CPU, and if it doesn't fit there either, it records that depth as skipped and moves on. In our runs, depth 10 at 29 lags didn't fit, so the 29-lag row below covers depths 2 to 8 only. Depth 10 never won in any other setting, so this shouldn't change the conclusion.
+
+**Results.** Each cell shows ridge first, then XGBoost. "All 19 test sessions" averages the 14 ON sessions and the 5 OFF sessions together.
+
+| Features | History | Best depth | Validation R² | Test OFF R² | 3 Hz ON R² | 20 Hz ON R² | All 19 test sessions |
+|---|---|---|---|---|---|---|---|
+| Band power only | 9 lags | 8 | 0.021 → 0.030 | 0.015 → 0.014 | 0.012 → 0.025 | 0.017 → 0.031 | 0.015 → 0.024 |
+| LMP + band power | 9 lags | 6 | 0.035 → 0.070 | 0.045 → 0.045 | 0.025 → 0.046 | 0.016 → 0.041 | 0.027 → 0.044 |
+| LMP + band power | 14 lags | 6 | 0.052 → 0.082 | 0.051 → 0.056 | 0.025 → 0.059 | 0.021 → 0.057 | 0.030 → 0.058 |
+| LMP + band power | 19 lags | 6 | 0.053 → **0.091** | 0.053 → **0.062** | 0.031 → 0.065 | 0.029 → 0.063 | 0.036 → **0.064** |
+| LMP + band power | 29 lags | 6 | 0.052 → 0.092 | 0.052 → 0.061 | 0.032 → 0.065 | 0.029 → 0.055 | 0.036 → 0.061 |
+
+**XGBoost beats ridge in every setting, but only by a little.** With LMP included, it gains about 0.03 to 0.04 on the validation days and about 0.02 to 0.03 across the 19 test sessions. With band power only, the gain is about 0.01. The best setting (LMP + band power, 19 lags, depth 6) reaches 0.091 on validation and about 0.06 on the test days, still far below the 0.2 bar.
+
+The validation numbers flatter XGBoost a bit, because the validation days also chose its depth and when to stop adding trees. The test days are the fair comparison, and there the gain on the OFF sessions is small (0.000 to 0.009). Most of the test-day gain comes from the ON sessions.
+
+Even the best XGBoost decoder only matches the timing-only baseline from the diagnostics (0.089 on the validation days), which uses no brain data at all.
+
+**Deeper trees memorize instead of generalizing.** Here is the depth search for the best setting (LMP + band power, 19 lags):
+
+| Tree depth | Trees kept (vx / vy) | R² on its own training data | Validation R² |
+|---|---|---|---|
+| 2 | 132 / 392 | 0.165 | 0.074 |
+| 3 | 96 / 206 | 0.203 | 0.080 |
+| 4 | 9 / 200 | 0.219 | 0.082 |
+| **6** | 10 / 133 | 0.337 | **0.091** |
+| 8 | 27 / 88 | 0.518 | 0.089 |
+| 10 | 28 / 57 | 0.606 | 0.083 |
+
+Deeper trees keep fitting the training data better (up to 0.61), but validation R² peaks at depth 6 and then falls. Depth 6 won in every LMP setting, and depth 8 won with band power only.
+
+**Almost all of the signal is in up-down movement.** Splitting R² by direction shows that sideways velocity can't be predicted at all, by either model:
+
+| Model (LMP + band power, 19 lags) | Sideways (vx), OFF / ON | Up-down (vy), OFF / ON |
+|---|---|---|
+| Ridge | 0.012 / −0.015 | 0.094 / 0.074 |
+| XGBoost | 0.003 / −0.002 | 0.121 / 0.130 |
+
+This is also why the vx models stop after only a handful of trees: there's almost nothing to learn. Even up-down velocity on its own stays below 0.2. We don't know yet whether sideways movement is truly absent from the brain signal or just hard to measure from a side-view camera.
+
+**ON vs. OFF looks different at the two frequencies.**
+
+- **At 3 Hz the pattern matches ridge.** ON scores 0.009 to 0.018 below the same-day OFF session in the LMP settings, lower in 5 or 6 of the 7 sessions.
+- **At 20 Hz, ON appears to score higher than OFF** (by 0.026 to 0.037). That's not stimulation helping. Four of the seven 20 Hz sessions share one OFF reference, 250616-101326, which XGBoost happens to decode poorly (R² between −0.015 and 0.028 depending on the setting), so the comparison is dragged by one weak session.
+- **XGBoost improved the ON sessions more than the OFF sessions,** compared with ridge. It may cope with stimulation-induced changes in the features a little better, but with this few sessions we can't separate that from noise.
+
+**Takeaway:** a nonlinear decoder helps a little, but not nearly enough to reach the 0.2 bar. The main limit is how little velocity information these features carry, not the linear model. This doesn't change the Task 3 conclusion.
+
 ### Keep in mind: the OFF session was always recorded first
 
 On all 5 test days, the no-stim session was recorded before the stimulation sessions. So when ON scores lower than OFF, part of that could come from being later in the day (the monkey getting tired, attention drifting, electrodes changing) rather than from the stimulation itself. Comparing against the same day's OFF session rules out differences between days, but not this ordering within a day.
@@ -92,7 +152,7 @@ It's far too big to be brain activity. The LMP on that channel reaches about 78,
 
 Before we handled it, this one artifact dragged the session's R² down to −0.71 (LMP + band power, 9 lags), enough to pull the whole 20 Hz average below zero. Dropping just the 86 affected time steps brought it back to 0.043, in line with the other sessions. The band-power-only decoder barely noticed (R² 0.030), because the artifact shows up mainly in the LMP.
 
-**How we handle it:** after normalization, every feature value is capped at ±10 (`CLIP_Z` in `task3_common.py`), in every session, for both training and evaluation. With the cap, this session scores 0.040.
+**How we handle it:** after normalization, every feature value is capped at ±10 (`CLIP_Z` in `task3/task3_common.py`), in every session, for both training and evaluation. With the cap, this session scores 0.040.
 
 **If your task uses LMP from this session** (fine-tuning, LoRA, the in-context model, PARRM + ridge), you'll hit the same artifact. Please use the same ±10 cap, or let's agree on a different fix as a team, so all methods are compared fairly.
 
@@ -104,7 +164,7 @@ PARRM is a filter that removes the part of the signal that repeats in step with 
 
 Each test-day stimulation session was then scored twice: once on the original features (as in 3.1) and once on the PARRM-cleaned features.
 
-One note for later: if CAR ever wins the reference comparison, there's no cleaned version of the CAR features yet (`parrm_car`). In that case `task3_2_parrm.py` stops and prints the command that computes them, which takes about 5 minutes.
+One note for later: if CAR ever wins the reference comparison, there's no cleaned version of the CAR features yet (`parrm_car`). In that case `task3/task3_2_parrm.py` stops and prints the command that computes them.
 
 ### What we found
 
@@ -161,7 +221,7 @@ One limit: this was a linear check with simple features. It's strong evidence, b
 
 Our results match **outcome 3 on slide 24: poor accuracy even without stimulation.**
 
-- The best decoder without stimulation only reaches an R² of about 0.05. That's after the two improvements slide 24 suggests: we added LMP and longer history, and per-session normalization was already in place.
+- The best decoder without stimulation only reaches an R² of about 0.05 with ridge. That's after the two improvements slide 24 suggests: we added LMP and longer history, and per-session normalization was already in place. A nonlinear decoder (XGBoost) raises this only to about 0.06 on the test days (0.09 on the validation days).
 - Stimulation costs only about 0.01 to 0.025 in R². Some of that may be due to recording order rather than the stimulation itself, and PARRM cleaning recovers almost none of it.
 - The stimulation signal on its own predicts nothing.
 

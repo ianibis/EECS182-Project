@@ -8,16 +8,21 @@ ridge regression, and R². Tasks 3.1-3.3 (and the PARRM + ridge baseline in
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 
 import numpy as np
 import pandas as pd
 
-import EECS182_NHP_data_loader as L
-import EECS182_NHP_features as F
+TASK_DIR = os.path.dirname(os.path.abspath(__file__))  # .../task3
+REPO = os.path.dirname(TASK_DIR)                         # repository root
+if REPO not in sys.path:  # the shared loader and features scripts live at the repository root
+    sys.path.insert(0, REPO)
 
-REPO = os.path.dirname(os.path.abspath(__file__))
+import EECS182_NHP_data_loader as L  # noqa: E402
+import EECS182_NHP_features as F     # noqa: E402
+
 DATA = os.path.join(REPO, 'data')
 RESULTS_DIR = os.path.join(REPO, 'results', 'task3')
 
