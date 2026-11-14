@@ -1,0 +1,58 @@
+/home/dongc1/workspace/EECS182-Project/section5_icl/icl/features_torch.py:43: UserWarning: Specified kernel cache directory is not writable! This disables kernel caching. Specified directory is /home/dongc1/.cache/torch/kernels. This warning will appear only once per process. (Triggered internally at /pytorch/aten/src/ATen/native/cuda/jit_utils.cpp:1523.)
+  power = spectrum[..., torch.as_tensor(np.flatnonzero(selected), device=x.device)].abs().pow(2) * scale
+Butters-250602-101949 20 Hz  E real  1.47  sim(k=1)  1.38  kappa  1.07  R2 off 0.086  sim1 0.084  simfit 0.087  real 0.080
+Butters-250602-102701  3 Hz  E real  0.88  sim(k=1)  1.03  kappa  0.00  R2 off 0.086  sim1 0.087  simfit 0.086  real 0.016
+Butters-250603-143150  3 Hz  E real  1.13  sim(k=1)  1.02  kappa  1.81  R2 off 0.048  sim1 0.047  simfit 0.046  real 0.033
+Butters-250603-144025 20 Hz  E real  1.31  sim(k=1)  1.29  kappa  1.38  R2 off 0.048  sim1 0.047  simfit 0.048  real 0.028
+Butters-250603-145511  3 Hz  E real  1.04  sim(k=1)  1.08  kappa  0.79  R2 off 0.048  sim1 0.048  simfit 0.048  real 0.028
+Butters-250605-101832 20 Hz  E real  1.15  sim(k=1)  1.18  kappa  0.88  R2 off 0.098  sim1 0.097  simfit 0.095  real 0.072
+Butters-250605-102648  3 Hz  E real  0.80  sim(k=1)  1.05  kappa  0.00  R2 off 0.098  sim1 0.097  simfit 0.098  real 0.029
+Butters-250605-104140 20 Hz  E real  1.44  sim(k=1)  1.40  kappa  1.03  R2 off 0.098  sim1 0.095  simfit 0.097  real 0.044
+Butters-250611-101406 20 Hz  E real  1.28  sim(k=1)  1.09  kappa  1.58  R2 off 0.055  sim1 0.053  simfit 0.053  real 0.031
+Butters-250611-102248 20 Hz  E real  0.95  sim(k=1)  1.11  kappa  0.00  R2 off 0.055  sim1 0.056  simfit 0.055  real 0.036
+Butters-250611-103117 20 Hz  E real  1.08  sim(k=1)  1.21  kappa  0.58  R2 off 0.055  sim1 0.060  simfit 0.057  real 0.016
+Butters-250611-103944 20 Hz  E real  1.47  sim(k=1)  1.30  kappa  1.51  R2 off 0.055  sim1 0.060  simfit 0.059  real 0.024
+Butters-250620-094859  3 Hz  E real  1.50  sim(k=1)  1.03  kappa  2.70  R2 off 0.017  sim1 0.015  simfit 0.012  real 0.040
+Butters-250620-095923 20 Hz  E real  1.10  sim(k=1)  1.09  kappa  1.03  R2 off 0.017  sim1 0.017  simfit 0.018  real 0.032
+Butters-250620-101406  3 Hz  E real  1.20  sim(k=1)  1.10  kappa  1.16  R2 off 0.017  sim1 0.016  simfit 0.016  real 0.042
+Butters-250701-102433 20 Hz  E real  1.02  sim(k=1)  1.10  kappa  0.43  R2 off 0.026  sim1 0.026  simfit 0.026  real 0.024
+Butters-250708-095308 20 Hz  E real  1.33  sim(k=1)  1.17  kappa  1.55  R2 off 0.163  sim1 0.162  simfit 0.167  real 0.043
+{
+ "3": {
+  "n_sessions": 6,
+  "n_kappa_zero": 2,
+  "n_kappa_capped": 0,
+  "kappa_fit_median": 0.9728433136218522,
+  "real_artifact_rms_uv_median": 3.175818605369014,
+  "real_artifact_rms_uv_iqr": [
+   0.6626059576566857,
+   3.7882586358335173
+  ],
+  "excess_real_median": 1.0861413478851318,
+  "r2_median": {
+   "r2_off_val": 0.04754872747579564,
+   "r2_sim_k1_val": 0.047411266034830674,
+   "r2_sim_kfit_val": 0.046947285022253094,
+   "r2_real_on": 0.030824190908552984
+  }
+ },
+ "20": {
+  "n_sessions": 11,
+  "n_kappa_zero": 1,
+  "n_kappa_capped": 0,
+  "kappa_fit_median": 1.0323219423661312,
+  "real_artifact_rms_uv_median": 2.3025184163683443,
+  "real_artifact_rms_uv_iqr": [
+   1.2687690668203007,
+   2.403468164654734
+  ],
+  "excess_real_median": 1.27528715133667,
+  "r2_median": {
+   "r2_off_val": 0.055283024567038375,
+   "r2_sim_k1_val": 0.05965209904371377,
+   "r2_sim_kfit_val": 0.05657720303611996,
+   "r2_real_on": 0.03160234205075557
+  }
+ }
+}
+saved /home/dongc1/workspace/EECS182-Project/section5_icl/results/figs/sim_vs_real_psd.png

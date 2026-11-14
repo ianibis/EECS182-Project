@@ -1,0 +1,51 @@
+L1: one fixed episode
+  step     1  loss 1.6915  1 s
+  step   100  loss 0.5473  1 s
+  step   200  loss 0.0423  2 s
+  step   300  loss 0.0060  2 s
+  step   400  loss 0.0033  3 s
+  step   500  loss 0.0015  3 s
+  step   600  loss 0.0011  4 s
+L1 eval R2 0.999  ->  PASS
+L2: 64 fixed episodes
+  step     1  loss 1.2042  0 s
+  step   250  loss 0.7669  6 s
+  step   500  loss 0.6103  12 s
+  step   750  loss 0.4210  18 s
+  step  1000  loss 0.2827  23 s
+  step  1250  loss 0.1800  29 s
+  step  1500  loss 0.1194  35 s
+  step  1750  loss 0.0775  41 s
+  step  2000  loss 0.0623  47 s
+  step  2250  loss 0.0421  52 s
+  step  2500  loss 0.0317  58 s
+  step  2750  loss 0.0235  64 s
+  step  3000  loss 0.0231  70 s
+L2 eval R2 0.987  ->  PASS
+L3: synthetic per-episode linear labels
+  step     1  loss 1.0410  1 s
+  step   250  loss 1.4699  25 s
+  step   500  loss 0.8405  46 s
+  step   750  loss 0.4566  67 s
+  step  1000  loss 0.1980  87 s
+  step  1250  loss 0.2759  108 s
+  step  1500  loss 0.2250  128 s
+  step  1750  loss 0.1196  149 s
+  step  2000  loss 0.0812  170 s
+  step  2250  loss 0.0650  190 s
+  step  2500  loss 0.0717  211 s
+  step  2750  loss 0.1047  231 s
+  step  3000  loss 0.0637  252 s
+  step  3250  loss 0.0629  273 s
+  step  3500  loss 0.0703  293 s
+  step  3750  loss 0.0977  314 s
+  step  4000  loss 0.0600  334 s
+  step  4250  loss 0.0817  356 s
+  step  4500  loss 0.0647  378 s
+  step  4750  loss 0.0491  398 s
+  step  5000  loss 0.0614  419 s
+  step  5250  loss 0.0981  439 s
+  step  5500  loss 0.0614  460 s
+  step  5750  loss 0.0427  480 s
+  step  6000  loss 0.0819  501 s
+L3 held-out R2 by k: k=0: -0.036  k=2: 0.974  k=5: 0.982  k=10: 0.981  k=20: 0.984  ->  PASS

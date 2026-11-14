@@ -1,0 +1,37 @@
+params 797,185  device cuda
+step      1  loss/d 0.9569  0 s
+step   1000  loss/d 0.7026  4 s
+step   2000  loss/d 0.5755  7 s
+step   3000  loss/d 0.5889  11 s
+step   4000  loss/d 0.5404  14 s
+step   5000  loss/d 0.4385  17 s
+step   6000  loss/d 0.3853  21 s
+step   7000  loss/d 0.3504  24 s
+step   8000  loss/d 0.4213  28 s
+step   9000  loss/d 0.3755  32 s
+step  10000  loss/d 0.2771  35 s
+step  11000  loss/d 0.3279  39 s
+step  12000  loss/d 0.3502  43 s
+step  13000  loss/d 0.3309  47 s
+step  14000  loss/d 0.2541  51 s
+step  15000  loss/d 0.3738  54 s
+step  16000  loss/d 0.3250  57 s
+step  17000  loss/d 0.2734  61 s
+step  18000  loss/d 0.2981  64 s
+step  19000  loss/d 0.3605  68 s
+step  20000  loss/d 0.3050  71 s
+
+ k  transformer  least_squares  zero
+ 0       1.0308         1.0182   1.018
+ 1       0.7618         0.7527   0.953
+ 2       0.6162         0.6049   0.993
+ 3       0.4031         0.3840   0.982
+ 4       0.2559         0.2071   1.004
+ 5       0.1442         0.0000   0.993
+ 6       0.0746         0.0000   0.972
+ 7       0.0496         0.0000   1.002
+ 8       0.0316         0.0000   0.940
+ 9       0.0283         0.0000   0.996
+10       0.0232         0.0000   1.049
+
+mean error at k >= 7: transformer 0.0332, least squares 0.0000, zero 0.997  ->  PASS

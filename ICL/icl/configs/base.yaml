@@ -1,0 +1,25 @@
+# In-context decoder, plan 5.4. Override any key on the command line, e.g. --lr 1e-4 --steps 10000.
+seed: 0
+steps: 15000             # lr 1e-4 reaches its plateau by about 6k steps (5.4.1)
+batch: 32
+lr: 1.0e-4                # 5.4.1 sweep: 3e-4 and 1e-3 memorise the 520 training trials within 2k steps
+weight_decay: 0.05
+betas: [0.9, 0.95]
+warmup: 1000
+min_lr_frac: 0.1          # cosine decay to this fraction of lr
+grad_clip: 1.0
+encoder: eegnet           # eegnet | feature
+d_model: 128
+n_layer: 4
+n_head: 4
+dropout: 0.0              # transformer resid/attn/embedding dropout (5.4.1b: 0.1 hurt)
+enc_dropout: 0.25         # EEGNet block-2 dropout
+train_stim: true          # 5.4.1b: + the 26 training-day stim sessions (real artifact, no simulated one); B 0.25 -> 0.34
+shift_kind: mix           # harmonic | template | mix
+max_jitter_bins: 10
+clip: 10.0
+log_every: 200
+val_every: 1000           # validation A and B
+real_val_every: 2000      # real validation stim sessions
+val_draws: 3              # context draws per (session, k) in validation B and real
+val_ks: [0, 2, 5, 10, 20]
