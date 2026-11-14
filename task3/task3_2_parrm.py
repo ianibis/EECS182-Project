@@ -6,8 +6,8 @@ file, so their PARRM features are identical to the raw ones and the decoder
 does not change. Only the test-day stimulation-ON sessions are scored twice:
 on raw features (as in 3.1) and on PARRM-cleaned features.
 
-Run (from the repository root):  python task3/task3_2_parrm.py --features lmp+bands --lags 9
-Writes results/task3/task3_2_test_results_<features>_lags<N>.csv.
+Run (from the repository root):  python task3/task3_2_parrm.py --lags 9
+Writes results/task3/task3_2_test_results_lmp_bands_lags<N>.csv.
 """
 
 import argparse
@@ -20,14 +20,14 @@ import pandas as pd
 import task3_common as C
 
 
-def main(feature_set, n_lags):
+def main(n_lags):
     start = time.time()
     os.makedirs(C.RESULTS_DIR, exist_ok=True)
-    tag = C.run_tag(feature_set, n_lags)
+    tag = C.run_tag(n_lags)
     M, S = C.manifest(), C.splits()
 
     # ---- The 3.1 decoder (trained on OFF trials, λ and reference from the validation days)
-    decoder = C.fit_off_decoder(feature_set, n_lags)
+    decoder = C.fit_off_decoder(n_lags)
     C.print_lambda_search(decoder['search'])
     model, raw_variant = decoder['model'], decoder['reference']
     clean_variant = C.PARRM_VARIANT[raw_variant]
@@ -43,9 +43,9 @@ def main(feature_set, n_lags):
     for session in C.sessions('test', 'stim'):
         off = S['off_reference'][session]
         if off not in off_scores:
-            off_scores[off] = C.score_session(model, off, raw_variant, feature_set, n_lags)
-        raw = C.score_session(model, session, raw_variant, feature_set, n_lags)
-        clean = C.score_session(model, session, clean_variant, feature_set, n_lags)
+            off_scores[off] = C.score_session(model, off, raw_variant, n_lags)
+        raw = C.score_session(model, session, raw_variant, n_lags)
+        clean = C.score_session(model, session, clean_variant, n_lags)
         r2_off = off_scores[off]['r2']
         rows.append(dict(
             session=session, date=M.loc[session, 'date'], condition=M.loc[session, 'condition'],
@@ -55,7 +55,7 @@ def main(feature_set, n_lags):
             r2_on_parrm_vx=clean['r2_vx'], r2_on_parrm_vy=clean['r2_vy'],
             n_bins_on=clean['n_bins'], n_bins_off=off_scores[off]['n_bins'],
             parrm_am_clean_over_raw=M.loc[session, 'parrm_am_clean_over_raw'],
-            reference=raw_variant, lam=decoder['lam'], feature_set=feature_set, n_lags=n_lags))
+            reference=raw_variant, lam=decoder['lam'], feature_set=C.FEATURE_SET, n_lags=n_lags))
     results = pd.DataFrame(rows).sort_values(['condition', 'session'])
     results.to_csv(os.path.join(C.RESULTS_DIR, f'task3_2_test_results_{tag}.csv'), index=False)
 
@@ -77,9 +77,6 @@ def main(feature_set, n_lags):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Task 3.2: the Task 3.1 OFF decoder scored on '
                                                  'PARRM-cleaned stimulation-ON trials.')
-    parser.add_argument('--features', choices=sorted(C.FEATURE_SETS), default='lmp+bands',
-                        help='which features the decoder uses (default: lmp+bands)')
     parser.add_argument('--lags', type=int, default=C.N_LAGS,
                         help=f'earlier 50 ms bins of feature history per bin (default: {C.N_LAGS})')
-    args = parser.parse_args()
-    main(args.features, args.lags)
+    main(parser.parse_args().lags)

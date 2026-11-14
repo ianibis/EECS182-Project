@@ -150,7 +150,7 @@ def main(n_lags):
     print(results.groupby('condition').r2.agg(['size', 'mean', 'std', 'min', 'max'])
           .to_string(float_format=lambda v: f'{v:7.3f}'))
 
-    brain_file = os.path.join(C.RESULTS_DIR, f'task3_1_test_results_{C.run_tag("lmp+bands", n_lags)}.csv')
+    brain_file = os.path.join(C.RESULTS_DIR, f'task3_1_test_results_{C.run_tag(n_lags)}.csv')
     if os.path.exists(brain_file):
         brain = pd.read_csv(brain_file).groupby('condition').r2_on.mean()
         print('For comparison, Task 3.1 brain decoder (LMP + band power, same lags) on the same ON trials: '

@@ -15,13 +15,13 @@ random hold-out would leak and make the model look better than it is.
 
 Run (from the repository root):
       python task3/task3_1_xgboost.py                        (LMP + band power, 9 lags, CPU)
-      python task3/task3_1_xgboost.py --lags 19 --features bands
+      python task3/task3_1_xgboost.py --lags 19
       python task3/task3_1_xgboost.py --device cuda          (train on an NVIDIA GPU)
       python task3/task3_1_xgboost.py --depths 2 4 6         (choose which tree depths to try)
 GPU and CPU training do not build bit-identical trees, so results can differ
 very slightly between the two.
-Writes results/task3/task3_1_xgboost_search_<features>_lags<N>.csv and
-task3_1_xgboost_test_results_<features>_lags<N>.csv.
+Writes results/task3/task3_1_xgboost_search_lmp_bands_lags<N>.csv and
+task3_1_xgboost_test_results_lmp_bands_lags<N>.csv.
 """
 
 import argparse
@@ -75,21 +75,21 @@ def _out_of_memory(error):
     return 'out of memory' in text or 'bad_malloc' in text or 'Failed to allocate' in text
 
 
-def main(feature_set, n_lags, reference, device, depths=DEPTHS):
+def main(n_lags, reference, device, depths=DEPTHS):
     start = time.time()
     os.makedirs(C.RESULTS_DIR, exist_ok=True)
-    tag = C.run_tag(feature_set, n_lags)
+    tag = C.run_tag(n_lags)
     M, S = C.manifest(), C.splits()
 
     train_sessions = [s for s in C.sessions('train', 'no_stim') if C.has_cm_velocity(s)]
     val_sessions = C.sessions('val', 'no_stim')
-    print(f'XGBoost decoder on {device}. Features: {feature_set}, history: {n_lags} earlier bins '
+    print(f'XGBoost decoder on {device}. Features: LMP + 7 band powers, history: {n_lags} earlier bins '
           f'({(n_lags + 1) * 50} ms including the current bin), reference: {reference}')
     print(f'Training on {len(train_sessions)} OFF sessions (training days, held-out block excluded); '
           f'early stopping and depth chosen on {len(val_sessions)} validation-day OFF sessions.')
 
-    X, Y = C.stack_arrays(train_sessions, reference, 'train', feature_set, n_lags)
-    val = {s: C.session_arrays(s, reference, 'query', feature_set, n_lags) for s in val_sessions}
+    X, Y = C.stack_arrays(train_sessions, reference, 'train', n_lags)
+    val = {s: C.session_arrays(s, reference, 'query', n_lags) for s in val_sessions}
     X_val = np.concatenate([x for x, _ in val.values()])
     Y_val = np.concatenate([y for _, y in val.values()])
     print(f'  {X.shape[0]:,} training bins x {X.shape[1]:,} inputs; {X_val.shape[0]:,} validation bins')
@@ -118,13 +118,13 @@ def main(feature_set, n_lags, reference, device, depths=DEPTHS):
             if decoder is None:
                 # Not enough RAM either: record the depth as skipped instead of losing the whole run.
                 print(f'  depth {depth}: out of memory on the CPU too; skipped')
-                rows.append(dict(feature_set=feature_set, n_lags=n_lags, reference=reference,
+                rows.append(dict(feature_set=C.FEATURE_SET, n_lags=n_lags, reference=reference,
                                  device='skipped: out of memory', max_depth=depth,
                                  fit_seconds=time.time() - t0))
                 continue
         decoders[depth] = decoder
         per_session = {s: C.r2(Yv, decoder.predict(Xv)).mean() for s, (Xv, Yv) in val.items()}
-        rows.append(dict(feature_set=feature_set, n_lags=n_lags, reference=reference, device=devices[depth],
+        rows.append(dict(feature_set=C.FEATURE_SET, n_lags=n_lags, reference=reference, device=devices[depth],
                          max_depth=depth,
                          n_trees_vx=decoder.n_trees[0], n_trees_vy=decoder.n_trees[1],
                          train_r2=C.r2(Y, decoder.predict(X)).mean(),
@@ -150,8 +150,8 @@ def main(feature_set, n_lags, reference, device, depths=DEPTHS):
     for session in C.sessions('test', 'stim'):
         off = S['off_reference'][session]
         if off not in off_scores:
-            off_scores[off] = C.score_session(model, off, reference, feature_set, n_lags)
-        on = C.score_session(model, session, reference, feature_set, n_lags)
+            off_scores[off] = C.score_session(model, off, reference, n_lags)
+        on = C.score_session(model, session, reference, n_lags)
         rows.append(dict(
             session=session, date=M.loc[session, 'date'], condition=M.loc[session, 'condition'],
             off_reference=off, r2_on=on['r2'], r2_off=off_scores[off]['r2'],
@@ -161,7 +161,7 @@ def main(feature_set, n_lags, reference, device, depths=DEPTHS):
             n_bins_on=on['n_bins'], n_bins_off=off_scores[off]['n_bins'],
             model='xgboost', device=devices[depth], max_depth=depth,
             n_trees_vx=model.n_trees[0], n_trees_vy=model.n_trees[1],
-            reference=reference, feature_set=feature_set, n_lags=n_lags))
+            reference=reference, feature_set=C.FEATURE_SET, n_lags=n_lags))
     results = pd.DataFrame(rows).sort_values(['condition', 'session'])
     results.to_csv(os.path.join(C.RESULTS_DIR, f'task3_1_xgboost_test_results_{tag}.csv'), index=False)
 
@@ -198,8 +198,6 @@ def main(feature_set, n_lags, reference, device, depths=DEPTHS):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Task 3.1 with an XGBoost decoder trained on '
                                                  'stimulation-OFF trials.')
-    parser.add_argument('--features', choices=sorted(C.FEATURE_SETS), default='lmp+bands',
-                        help='which features the decoder uses (default: lmp+bands)')
     parser.add_argument('--lags', type=int, default=C.N_LAGS,
                         help=f'earlier 50 ms bins of feature history per bin (default: {C.N_LAGS})')
     parser.add_argument('--reference', choices=C.REFERENCES, default='export_none',
@@ -210,4 +208,4 @@ if __name__ == '__main__':
                         help=f'tree depths to try (default: {" ".join(map(str, DEPTHS))}); deep trees '
                              'with long histories may not fit in memory')
     args = parser.parse_args()
-    main(args.features, args.lags, args.reference, args.device, tuple(args.depths))
+    main(args.lags, args.reference, args.device, tuple(args.depths))
