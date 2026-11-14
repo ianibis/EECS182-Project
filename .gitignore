@@ -1,0 +1,21 @@
+# Raw and derived data stay local (~15 GB); only code is committed.
+data/
+
+# Script outputs: each person runs the code and keeps results locally.
+results/
+
+# Course handout (kept locally, not part of the code)
+EECS-182-Project-Overview.pdf
+
+# Virtual environment (recreate with: python -m venv .venv, then pip install -r requirements.txt)
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# OS junk
+__MACOSX/
+.DS_Store
+Thumbs.db
