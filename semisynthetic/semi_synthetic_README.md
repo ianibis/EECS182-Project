@@ -8,7 +8,7 @@ The original exports, trial times, and velocity labels are unchanged. The 10x re
 
 The validation sweep selected 10x as the largest tested scale. On the five OFF test days, the GRU ensemble gave R² = 0.1975. On test stimulation sessions, the recorded and 10x results were 0.0895 and 0.0615 at 3 Hz, and 0.1086 and 0.0805 at 20 Hz. These are session means, not pooled-bin scores.
 
-The generator writes `semi_synthetic/parrm_amp10/h5_export_outputs/<session>.h5`, `metadata.csv`, and two feature caches under `features/task3_parrm_amp_s0010p000/` and `features/task3_parrm_amp_hf_s0010p000/`.
+The generator writes `semi_synthetic/parrm_amp10/h5_export_outputs/<session>.h5`, `metadata.csv`, and two feature caches under `features/parrm_amp10/` and `features/parrm_amp10_hf/`.
 
 For each ON session, `metadata.csv` records the original export, PARRM file, generated recording, feature files, artifact scale, and reconstruction check. File paths are relative to the data root.
 
