@@ -54,19 +54,19 @@ def feature_variant(source):
     if source == 'parrm':
         return 'parrm_none'
     if source == 'amp10':
-        return 'task3_parrm_amp_s0010p000'
+        return 'parrm_amp10'
     raise ValueError(f'Unknown source: {source}')
 
 
 def high_band_path(root, session, source):
     if source == 'amp10':
-        folder = 'task3_parrm_amp_hf_s0010p000'
+        folder = 'parrm_amp10'
     elif source == 'recorded':
         # These already exist for the OFF data and the 1x artifact sweep.
         legacy = root / 'features' / 'hf200_400_off' / f'{session}.h5'
         if legacy.is_file():
             return legacy
-        scale_one = root / 'features' / 'task3_parrm_amp_hf_s0001p000' / f'{session}.h5'
+        scale_one = root / 'features' / 'parrm_amp10_hf' / f'{session}.h5'
         if scale_one.is_file():
             return scale_one
         folder = 'hf200_400_export'
