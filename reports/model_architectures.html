@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CS182 baseline architectures</title></head>
+<body>
+<h1>CS182 baseline architectures</h1>
+<h2>1. Linear regression (ridge)</h2>
+<p>Each 50 ms bin is a vector of 2,800 inputs: 10 history bins, 35 electrodes, 8 features. The weight matrix W is 2,800 by 2. The output is two numbers, vx and vy. The same W is applied to all 40 bins of a trial.</p>
+<img src="fig1_linear_regression.png" alt="Linear regression architecture" style="width:100%;max-width:1600px">
+<h2>Validation overlay</h2>
+<p>A held-out validation trial. Blue is the measured velocity vector y, orange is the ridge prediction yhat, and red is the tip-to-tip error. The left panel uses the full screen scale. The right panel zooms near the origin because the prediction stays close to the mean velocity.</p>
+<img src="fig1_linear_regression_validation.gif" alt="Validation vector animation" style="width:100%;max-width:1200px">
+<p><a href="fig1_linear_regression_validation.png">Static frame</a></p>
+<h2>Parameter sweeps</h2>
+<p>Selection uses mean validation R², not RMSE. The dotted line is the chosen ridge alpha, 100,000. RMSE is shown because it has the same units as velocity and can rank models differently.</p>
+<img src="fig_parameter_sweeps.png" alt="Ridge alpha and KNN neighbour sweeps" style="width:100%;max-width:1600px">
+<ul>
+<li>Ridge: alpha, lag count, raw vs PARRM, CAR vs recording reference.</li>
+<li>KNN: neighbours k, PCA components, distance metric, uniform vs distance weighting.</li>
+<li>MLP: hidden sizes, dropout, learning rate, weight decay, batch size, epochs.</li>
+<li>GRU: hidden size, layers, dropout, learning rate, batch size, sequence length.</li>
+<li>EEGNet: temporal and spatial filters, kernel lengths, dropout, learning rate, weight decay.</li>
+<li>Shared: lag count, bin width, target smoothing, calibration shots k = 2, 5, 10, 20.</li>
+</ul>
+</body>
+</html>

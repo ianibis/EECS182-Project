@@ -59,14 +59,14 @@ class Session:
         return self.trials[self.trials.include == 1]
 
 
-def load_manifest(paths=None):
+def load_manifest(paths=None, path=None):
     paths = paths or Paths()
-    return pd.read_csv(os.path.join(paths.root, 'manifest.csv'))
+    return pd.read_csv(path or os.path.join(paths.root, 'manifest.csv'))
 
 
-def load_splits(paths=None):
+def load_splits(paths=None, path=None):
     paths = paths or Paths()
-    with open(os.path.join(paths.root, 'splits.json')) as file:
+    with open(path or os.path.join(paths.root, 'splits.json')) as file:
         return json.load(file)
 
 
