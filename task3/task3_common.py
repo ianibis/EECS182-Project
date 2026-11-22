@@ -35,7 +35,7 @@ ALIGN, PRE, POST, N_LAGS = 't_go', 0.5, 1.5, 9
 KIN_COLS = ('Index_vx_cm', 'Index_vy_cm')  # fingertip velocity, cm/s
 
 # Normalized features are clipped to ±CLIP_Z so a single artifact cannot
-# dominate the linear decoder (see Notes.md, Task 3.1: channel 64 in
+# dominate the linear decoder (see docs/task3-notes.md, Task 3.1: channel 64 in
 # 250616-102853 reaches z ≈ 5300). Clean data stays well inside this range.
 CLIP_Z = 10.0
 

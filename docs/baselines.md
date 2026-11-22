@@ -63,7 +63,7 @@ Outputs go to `results/task3/`. The baseline report is `reports/baselines/index.
 
 ## Design decisions worth knowing
 
-**Query set is fixed (option A).** `docs/project_specs.md` says "the remaining on trials are
+**Query set is fixed (option A).** `docs/project-spec.md` says "the remaining on trials are
 the query trials". Taken literally the scored set would change with k (48 trials at k=2,
 30 at k=20) and would contain pool trials, so pool-fitted feature normalisation would see
 query data. The fixed 30-trial set (blocks 3–5) keeps R² comparable across k, draws, seeds

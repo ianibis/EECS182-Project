@@ -18,7 +18,7 @@ Trial files, kinematics, movement labels, and session splits remain unchanged.
 | `Task3/task3_common.py` | Shared paths and configuration for the existing ridge scripts. |
 | `Task3/task3_gru_core.py` | GRU model, feature loading, calibration, and scoring. |
 | `Task3/task3_gru_results.py` | Runs GRU comparisons and saves results. |
-| `Task3/task3_README.md` | Instructions for Task 3. |
+| `task3/task3_README.md` | Instructions for Task 3. |
 | `semisynthetic/EECS182_make_semisynthetic_h5_v1.py` | Generates 10× artifact-amplified HDF5 recordings and features. |
 | `semisynthetic/semi_synthetic_README.md` | Describes the semi-synthetic dataset. |
 | `semisynthetic/semi_synthetic_metadata_schema.csv` | Defines the generated metadata columns. |
