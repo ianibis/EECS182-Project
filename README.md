@@ -11,6 +11,35 @@ This dataset contains motor cortex LFP recordings for decoding hand movement dur
 
 Every session has 50 rewarded trials, with 10 trials in each of five task blocks. During stimulation sessions, the stimulator is on for the task blocks and usually off for the ~30 s breaks. Two sessions have stimulation continuing through one break. All rewarded trials are therefore entirely ON in stimulation sessions and entirely OFF in no-stim sessions. The session counts, quality measures, and known problems are in `manifest.csv`.
 
+## Repository layout
+
+Data stays local and git ignores it. Run notebooks and scripts from the repository root so `data/` and `results/` resolve.
+
+| Path | Contents |
+|---|---|
+| `data/exports/export_h5_LFPs/` | Continuous LFP export per session |
+| `data/exports/export_trials/` | One trial table per session |
+| `data/parrm/parrm_h5_LFPs/` | PARRM-cleaned LFP for stimulation sessions |
+| `data/features/export_none/`, `data/features/parrm_none/` | Precomputed LMP and band-power features |
+| `data/kinematics_bins50ms/bins50ms/` | Kinematics resampled to 50 ms bins |
+| `EECS182_data_manifest.csv`, `splits.json` | Session metadata and fixed splits, used by the notebook and `task3/` |
+| `data/manifest.csv`, `data/splits.json` | Identical loader fallbacks for code that uses `data/` as its root |
+| `cs182_decoder_grouped.ipynb` | Ridge, KNN, MLP, GRU and EEGNet baselines |
+| `task3/` | Task 3 ridge, XGBoost, PARRM and StiF checks |
+| `scripts/notebook_api.py` | Loads the notebook's shared cells for the scripts |
+| `scripts/make_diagnostics.py` | Rebuilds the figures in the report |
+| `scripts/make_model_diagram.py` | Rebuilds the input and model diagrams from one real trial |
+| `scripts/make_model_architectures.py` | Rebuilds the per-baseline architecture graphs |
+| `scripts/make_validation_animation.py` | Rebuilds the validation vector animation |
+| `scripts/make_parameter_sweeps.py` | Rebuilds the R² and RMSE parameter sweeps |
+| `results/` | Generated metrics, checkpoints, figures and training logs; ignored by git |
+| `reports/baselines/index.html` | Generated baseline report with figures |
+| `reports/model_diagram.html` | Input, decoder, and output diagrams |
+| `reports/model_architectures.html` | Architecture graphs, validation animation, and parameter sweeps |
+| `docs/` | Proposal, project spec and baseline notes |
+
+The notebook and `task3/task3_common.py` read `EECS182_data_manifest.csv` and `splits.json` at the root. The `data/` copies keep loader defaults working when a script points its root at `data/`.
+
 ## Task
 
 The task is a sequence of five touchscreen targets. Butters holds a button until the go cue, then touches the targets in order for a juice reward. Two sequences were used: `1-9-4-3-7` (2025-05-20 to 2025-06-06 and 2025-07-07 to 2025-07-11; 36 sessions) and `3-7-6-1-9` (2025-06-09 to 2025-07-03; 34 sessions). The sequence for each recording is in `manifest.csv`. Target codes follow a phone keypad arrangement on a 3 × 3 grid. Positions are in screen cm:
