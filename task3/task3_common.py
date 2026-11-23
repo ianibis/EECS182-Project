@@ -24,7 +24,7 @@ import EECS182_NHP_data_loader as L  # noqa: E402
 import EECS182_NHP_features as F     # noqa: E402
 
 DATA = os.path.join(REPO, 'data')
-RESULTS_DIR = os.path.join(REPO, 'results', 'task3')
+RESULTS_DIR = os.path.join(REPO, 'task3_results')
 
 # The loader's defaults assume the original folder names; point it at data/.
 PATHS = L.Paths(

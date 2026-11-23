@@ -20,7 +20,7 @@ Run (from the repository root):
       python task3/task3_1_xgboost.py --depths 2 4 6         (choose which tree depths to try)
 GPU and CPU training do not build bit-identical trees, so results can differ
 very slightly between the two.
-Writes results/task3/task3_1_xgboost_search_lmp_bands_lags<N>.csv and
+Writes task3_results/task3_1_xgboost_search_lmp_bands_lags<N>.csv and
 task3_1_xgboost_test_results_lmp_bands_lags<N>.csv.
 """
 

@@ -7,7 +7,7 @@ does not change. Only the test-day stimulation-ON sessions are scored twice:
 on raw features (as in 3.1) and on PARRM-cleaned features.
 
 Run (from the repository root):  python task3/task3_2_parrm.py --lags 9
-Writes results/task3/task3_2_test_results_lmp_bands_lags<N>.csv.
+Writes task3_results/task3_2_test_results_lmp_bands_lags<N>.csv.
 """
 
 import argparse

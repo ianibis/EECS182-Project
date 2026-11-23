@@ -17,7 +17,7 @@ training-day stimulation sessions, λ chosen on the validation-day stimulation
 sessions, scored on the query trials of the test-day stimulation sessions.
 
 Run (from the repository root):  python task3/task3_3_stif.py --lags 9
-Writes results/task3/task3_3_lambda_search_lags<N>.csv and
+Writes task3_results/task3_3_lambda_search_lags<N>.csv and
 task3_3_test_results_lags<N>.csv.
 """
 
