@@ -7,6 +7,9 @@ This package contains the ridge scripts and a shorter GRU evaluation pipeline fo
 | Script | Use |
 | --- | --- |
 | `Task3/task3_1_ridge.py` | Linear OFF-to-ON benchmark (Task 3.1) |
+| `Task3/task3_1_ridge_semisynthetic.py` | Ridge on recorded, PARRM-cleaned and 10x ON features |
+| `Task3/task3_1_ridge_gru_matched.py` | Ridge with the GRU's 9 features, 19 lags and same-day calibration on 20 OFF trials |
+| `Task3/task3_make_amp10_features.py` | 10x ON feature caches from the local `data/` layout |
 | `Task3/task3_2_parrm.py` | Ridge on recorded versus PARRM-cleaned ON features (3.2) |
 | `Task3/task3_3_stif.py` | Stimulation monitor-only control (3.3) |
 | `Task3/task3_1_xgboost.py` | Optional tree-model comparison |

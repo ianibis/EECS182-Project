@@ -12,6 +12,7 @@ import sys
 from dataclasses import dataclass
 from functools import lru_cache
 
+import h5py
 import numpy as np
 import pandas as pd
 
@@ -126,15 +127,62 @@ def kinematics(session):
     return L.load_kinematics(session, PATHS)
 
 
+# ---------------------------------------------------------------- recordings and the 200-400 Hz band
+
+def loader_manifest():
+    """The manifest in the form the data loader expects (a 'session' column, default index)."""
+    return manifest().reset_index(drop=True)
+
+
+def load_recording(session, variant):
+    """The LFP (35 fixed channels, recording reference) behind a feature variant:
+    'export_none' (recorded), 'parrm_none' (PARRM-cleaned) or 'parrm_amp10' (10x artifact)."""
+    if variant == 'parrm_amp10':
+        from task3_make_amp10_features import amp10_recording  # imports this module
+        return amp10_recording(session)[0]
+    source = {'export_none': 'export', 'parrm_none': 'parrm'}[variant]
+    return L.load_session(session, PATHS, source=source, reference='none', manifest=loader_manifest())
+
+
+# The GRU's ninth feature per channel: log power in 200-400 Hz over a 256 ms window ending at
+# each bin's end (task3_gru_core.py, BAND and WINDOW), computed and normalized the same way.
+HF_BAND, HF_WINDOW = (200, 400), 0.256
+HF_DIRS = {'export_none': 'hf200_400_export', 'parrm_none': 'hf200_400_parrm',
+           'parrm_amp10': 'hf200_400_amp10'}
+
+
+def hf_power(session, variant):
+    """200-400 Hz log power, (bins, channels), with its bin and channel IDs.
+    Computed from the recording and cached in <DATA>/features/<HF_DIRS[variant]>/ the first time."""
+    path = os.path.join(DATA, 'features', HF_DIRS[variant], f'{session}.h5')
+    if not os.path.exists(path):
+        rec = load_recording(session, variant)
+        bin_ids = np.arange(int(np.ceil(rec.t[0] / L.BIN_S - 1e-9)), int(np.floor(rec.t[-1] / L.BIN_S + 1e-9)))
+        ends = np.searchsorted(rec.t, (bin_ids + 1) * L.BIN_S - 0.5 / rec.fs) - 1
+        power = F._band_power(rec.lfp, ends, rec.fs, HF_WINDOW, *HF_BAND)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with h5py.File(path + '.tmp', 'w') as file:
+            file.create_dataset('bin_id', data=bin_ids)
+            file.create_dataset('channel_ids', data=rec.channels)
+            file.create_dataset('logpow', data=power, compression='gzip')
+            file.attrs['band_hz'] = HF_BAND
+            file.attrs['window_s'] = HF_WINDOW
+        os.replace(path + '.tmp', path)
+        print(f'    made {os.path.relpath(path, DATA)}', flush=True)
+    with h5py.File(path, 'r') as file:
+        return file['bin_id'][:], file['channel_ids'][:], file['logpow'][:].T.astype(np.float32)
+
+
 # ---------------------------------------------------------------- arrays
 
-def session_arrays(session, variant, part, n_lags=N_LAGS):
+def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False):
     """Decoder inputs and target velocities for one session's trials.
 
     Returns X (n, d) and Y (n, 2) with one row per 50 ms bin that has both
     finite features and finite velocity. d = (n_lags + 1) * channels * 8
-    features (LMP + 7 band powers): each bin sees its own features plus those
-    of the n_lags bins before it.
+    features (LMP + 7 band powers; 9 with hf=True, adding 200-400 Hz power as
+    in the GRU): each bin sees its own features plus those of the n_lags bins
+    before it.
 
     Features are z-scored within the session, then clipped to ±CLIP_Z.
     Validation and test sessions take the statistics from their calibration
@@ -144,16 +192,27 @@ def session_arrays(session, variant, part, n_lags=N_LAGS):
     norm_rows = trial_rows(session, 'pool') if session in splits()['calibration'] else None
     feat = F.load_features(session, PATHS, variant=variant, normalize=True, trials=norm_rows)
     assert feat['feature_names'] == FEATURES
-    feat = dict(feat, X=np.clip(feat['X'], -CLIP_Z, CLIP_Z))  # NaN stays NaN
+    X = feat['X']
+    if hf:
+        bin_ids, channels, power = hf_power(session, variant)
+        if not (np.array_equal(bin_ids, feat['bin_id']) and np.array_equal(channels, feat['channel_ids'])):
+            raise ValueError(f'{session}: 200-400 Hz bins or channels differ from the other features')
+        start, stop = feat['norm']['window']  # same normalization window and rule as the other features
+        inside = (bin_ids * L.BIN_S >= start) & ((bin_ids + 1) * L.BIN_S <= stop)
+        median = np.nanmedian(power[inside], axis=0)
+        spread = 1.4826 * np.nanmedian(np.abs(power[inside] - median), axis=0)
+        spread[~(spread > 0)] = 1.0
+        X = np.concatenate([X, ((power - median) / spread)[:, :, None]], axis=2)
+    feat = dict(feat, X=np.clip(X, -CLIP_Z, CLIP_Z))  # NaN stays NaN
 
     X, Y, valid, _ = F.trial_arrays(feat, trial_rows(session, part), kin=kinematics(session),
                                     align=ALIGN, pre=PRE, post=POST, n_lags=n_lags, kin_cols=KIN_COLS)
     return X[valid], Y[valid]
 
 
-def stack_arrays(session_list, variant, part, n_lags=N_LAGS):
+def stack_arrays(session_list, variant, part, n_lags=N_LAGS, hf=False):
     """session_arrays() for several sessions, concatenated."""
-    pairs = [session_arrays(s, variant, part, n_lags) for s in session_list]
+    pairs = [session_arrays(s, variant, part, n_lags, hf) for s in session_list]
     return np.concatenate([x for x, _ in pairs]), np.concatenate([y for _, y in pairs])
 
 
@@ -296,8 +355,13 @@ def print_lambda_search(search):
     print(f'Chosen: reference = {chosen.reference}, lambda = {chosen.lam:g}')
 
 
-def score_session(model, session, variant, n_lags=N_LAGS):
+def score_session(model, session, variant, n_lags=N_LAGS, hf=False):
     """R² of a fitted decoder on one session's query trials, blocks 3-5 (mean and per axis)."""
-    X, Y = session_arrays(session, variant, 'query', n_lags)
+    X, Y = session_arrays(session, variant, 'query', n_lags, hf)
+    return score_arrays(model, X, Y)
+
+
+def score_arrays(model, X, Y):
+    """R² of a fitted decoder on given arrays (mean of vx and vy, and per axis)."""
     r2_vx, r2_vy = r2(Y, model.predict(X))
     return dict(r2=(r2_vx + r2_vy) / 2, r2_vx=r2_vx, r2_vy=r2_vy, n_bins=len(X))

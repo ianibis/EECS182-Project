@@ -30,11 +30,12 @@ SCALE = 10.0
 TOLERANCE = 0.03  # maximum relative RMS error of recorded = PARRM-cleaned + artifact
 
 
-def compute_amp10(session, scale=SCALE):
-    manifest = C.manifest().reset_index(drop=True)
-    recorded = L.load_session(session, C.PATHS, source='export', reference='none', manifest=manifest)
+def amp10_recording(session, scale=SCALE):
+    """The session's recording with the 35 decoding channels replaced by
+    recorded + (scale - 1) x PARRM artifact. Returns (Session, reconstruction error)."""
+    recorded = C.load_recording(session, 'export_none')
     parrm = L.load_session(session, C.PATHS, source='parrm', reference='none', with_artifact=True,
-                           manifest=manifest)
+                           manifest=C.loader_manifest())
     x = recorded.lfp.astype(np.float64)
     a = parrm.artifact.astype(np.float64)
     error = float(np.sqrt(np.sum((x - parrm.lfp - a) ** 2) / np.sum(x ** 2)))
@@ -42,7 +43,11 @@ def compute_amp10(session, scale=SCALE):
         raise ValueError(f'{session}: recorded != cleaned + artifact ({error:.2%} relative RMS)')
     recorded.lfp = (x + (scale - 1.0) * a).astype(recorded.lfp.dtype)
     recorded.cache = {}
-    del x, a, parrm
+    return recorded, error
+
+
+def compute_amp10(session, scale=SCALE):
+    recorded, error = amp10_recording(session, scale)
 
     # Same bins, LMP and band powers as F.compute_session.
     first_bin = int(np.ceil(recorded.t[0] / L.BIN_S - 1e-9))
