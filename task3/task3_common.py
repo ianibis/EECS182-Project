@@ -23,17 +23,31 @@ if REPO not in sys.path:  # the shared loader and features scripts live at the r
 import EECS182_NHP_data_loader as L  # noqa: E402
 import EECS182_NHP_features as F     # noqa: E402
 
-DATA = os.path.join(REPO, 'data')
 RESULTS_DIR = os.path.join(REPO, 'task3_results')
 
-# The loader's defaults assume the original folder names; point it at data/.
-PATHS = L.Paths(
-    root=DATA,  # features are read from data/features/<variant>/
-    export_dir=os.path.join(DATA, 'exports', 'export_h5_LFPs'),
-    trial_dir=os.path.join(DATA, 'exports', 'export_trials'),
-    parrm_dir=os.path.join(DATA, 'parrm', 'parrm_h5_LFPs'),
-    kin_dir=os.path.join(DATA, 'kinematics_bins50ms', 'bins50ms'),
-)
+# Two data layouts are supported. Features are read from <DATA>/features/<variant>/ in both.
+if os.environ.get('TASK3_DATA_ROOT'):
+    # The Box project folder (EECS282_finalProject), which also holds the manifest and splits.
+    DATA = os.path.abspath(os.path.expanduser(os.environ['TASK3_DATA_ROOT']))
+    META = DATA
+    PATHS = L.Paths(
+        root=DATA,
+        export_dir=os.path.join(DATA, 'export_outputs', 'h5_export_outputs'),
+        trial_dir=os.path.join(DATA, 'export_outputs', 'trials'),
+        parrm_dir=os.path.join(DATA, 'parrm_outputs', 'parrm_h5'),
+        kin_dir=os.path.join(DATA, 'kinematics_v3', 'bins50ms'),
+    )
+else:
+    # A local copy in data/ inside the repository; manifest and splits from the repository root.
+    DATA = os.path.join(REPO, 'data')
+    META = REPO
+    PATHS = L.Paths(
+        root=DATA,
+        export_dir=os.path.join(DATA, 'exports', 'export_h5_LFPs'),
+        trial_dir=os.path.join(DATA, 'exports', 'export_trials'),
+        parrm_dir=os.path.join(DATA, 'parrm', 'parrm_h5_LFPs'),
+        kin_dir=os.path.join(DATA, 'kinematics_bins50ms', 'bins50ms'),
+    )
 
 # Trial window and feature history (README defaults): 0.5 s before the go cue
 # to 1.5 s after it (40 bins of 50 ms), each bin also seeing the 9 bins before.
@@ -55,12 +69,12 @@ FEATURE_SET = 'lmp+bands'         # label written to the result files
 
 @lru_cache(maxsize=None)
 def manifest():
-    return pd.read_csv(os.path.join(REPO, 'EECS182_data_manifest.csv')).set_index('session', drop=False)
+    return pd.read_csv(os.path.join(META, 'EECS182_data_manifest.csv')).set_index('session', drop=False)
 
 
 @lru_cache(maxsize=None)
 def splits():
-    with open(os.path.join(REPO, 'splits.json')) as file:
+    with open(os.path.join(META, 'splits.json')) as file:
         return json.load(file)
 
 

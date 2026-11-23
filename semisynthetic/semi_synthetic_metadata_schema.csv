@@ -1,0 +1,18 @@
+column,meaning
+session,Session identifier
+split,Training validation or test split
+condition,am3hz or am20hz
+am_freq_hz,Nominal envelope frequency (Hz)
+off_reference,Matched no-stimulation session
+artifact_scale,PARRM artifact multiplier (10)
+construction,Formula used to make the recording
+modified_channels,Number of channels altered
+total_channels,Channels in the original recording
+samples,Number of samples per channel
+lfp_fs_hz,LFP sampling rate (Hz)
+reconstruction_relative_rms_error,RMS mismatch between recorded and cleaned plus artifact relative to recorded RMS
+original_export,Relative path to recorded LFP HDF5
+parrm_estimate,Relative path to PARRM file
+synthetic_export,Relative path to 10x LFP HDF5
+base_features,Relative path to LMP and 1–200 Hz features
+hf_features,Relative path to 200–400 Hz features
