@@ -27,7 +27,7 @@ Details:
 Run (from the repository root):
       python task3/task3_1_ridge_within_session.py             (9 earlier bins of history)
       python task3/task3_1_ridge_within_session.py --lags 19
-Writes results/task3/task3_1_within_session_folds_lmp_bands_lags<N>.csv (one row
+Writes task3_results/task3_1_within_session_folds_lmp_bands_lags<N>.csv (one row
 per session, held-out block and λ) and task3_1_within_session_lmp_bands_lags<N>.csv
 (one row per session). Run task3_1_ridge.py with the same --lags first to get the
 comparison with the cross-day decoder.

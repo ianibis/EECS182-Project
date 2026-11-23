@@ -7,6 +7,9 @@ This package contains the ridge scripts and a shorter GRU evaluation pipeline fo
 | Script | Use |
 | --- | --- |
 | `Task3/task3_1_ridge.py` | Linear OFF-to-ON benchmark (Task 3.1) |
+| `Task3/task3_1_ridge_semisynthetic.py` | Ridge on recorded, PARRM-cleaned and 10x ON features |
+| `Task3/task3_1_ridge_gru_matched.py` | Ridge with the GRU's 9 features, 19 lags and same-day calibration on 20 OFF trials |
+| `Task3/task3_make_amp10_features.py` | 10x ON feature caches from the local `data/` layout |
 | `Task3/task3_2_parrm.py` | Ridge on recorded versus PARRM-cleaned ON features (3.2) |
 | `Task3/task3_3_stif.py` | Stimulation monitor-only control (3.3) |
 | `Task3/task3_1_xgboost.py` | Optional tree-model comparison |
@@ -76,8 +79,8 @@ python Task3/task3_2_parrm.py
 python Task3/task3_3_stif.py
 ```
 
-The GRU runner writes CSVs to `results/task3_gru/` in the local GitHub checkout. Ridge writes CSVs to `results/task3/`; that directory is ignored because it also contains checkpoints. To commit ridge tables, copy only CSVs into a separate `results/task3_ridge/` folder. No HDF5 recordings, feature caches, or checkpoints belong in Git.
+The GRU runner writes CSVs to `results/task3_gru/` in the local GitHub checkout. The ridge, XGBoost and StiF scripts write CSVs to `task3_results/`, which is committed. Without `TASK3_DATA_ROOT` they read a local copy of the data from `data/` in the repository. No HDF5 recordings, feature caches, or checkpoints belong in Git.
 
 The generator was already run on the Box data; it need not be run again. To document the generated dataset, copy `semi_synthetic_README.md` from this repository to the Box folder as `semi_synthetic/parrm_amp10/README.md`. The generated `metadata.csv` is different from `semi_synthetic_metadata_schema.csv`, which is an explanatory field list.
 
-The runner does not retrain the five base GRUs and does not perform a k-labeled-ON-trial in-context comparison. It adapts on 20 same-day OFF trials and scores the 30 held-out query trials. The ridge scripts included here only score original and PARRM conditions; an additional dataset option would be needed to score ridge directly on 10x.
+The runner does not retrain the five base GRUs and does not perform a k-labeled-ON-trial in-context comparison. It adapts on 20 same-day OFF trials and scores the 30 held-out query trials. `task3/task3_1_ridge_semisynthetic.py` scores the ridge decoder on the recorded, PARRM-cleaned and 10x ON recordings. It reads 10x features from `features/parrm_amp10/`, made by `task3/task3_make_amp10_features.py`.

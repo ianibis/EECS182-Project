@@ -15,7 +15,7 @@ The `results/` folder isn't on GitHub, so you'll need to run the scripts yoursel
 
 On Mac or Linux, use `.venv/bin/pip` and `.venv/bin/python` instead.
 
-Then run the scripts from the repository root. All Task 3 code is in the `task3/` folder, and each script saves CSV files to `results/task3/`:
+Then run the scripts from the repository root. All Task 3 code is in the `task3/` folder, and each script saves CSV files to `task3_results/`:
 
 ```
 .venv\Scripts\python task3/task3_1_ridge.py                  # Task 3.1 with the default settings (9 lags)
