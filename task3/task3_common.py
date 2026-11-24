@@ -50,9 +50,10 @@ else:
         kin_dir=os.path.join(DATA, 'kinematics_bins50ms', 'bins50ms'),
     )
 
-# Trial window and feature history (README defaults): 0.5 s before the go cue
-# to 1.5 s after it (40 bins of 50 ms), each bin also seeing the 9 bins before.
-ALIGN, PRE, POST, N_LAGS = 't_go', 0.5, 1.5, 9
+# Trial window and feature history: 0.5 s before the go cue to 1.5 s after it
+# (40 bins of 50 ms), each bin also seeing the 19 bins before (1 s including the
+# current bin, as in the GRU). Earlier runs used 9; pass --lags 9 to reproduce them.
+ALIGN, PRE, POST, N_LAGS = 't_go', 0.5, 1.5, 19
 KIN_COLS = ('Index_vx_cm', 'Index_vy_cm')  # fingertip velocity, cm/s
 
 # Normalized features are clipped to ±CLIP_Z so a single artifact cannot
@@ -110,8 +111,11 @@ def trial_rows(session, part):
     'train' / 'val': training sessions, without / only the held-out block.
     'pool' / 'query': validation and test sessions, blocks 1-2 / blocks 3-5.
     'all': every included trial.
+    A list of trial numbers (e.g. a k-trial draw from splits.json) selects those trials.
     """
     included = _included_trials(session)
+    if not isinstance(part, str):
+        return included[included.trial.isin(list(part))]
     if part == 'all':
         return included
     if part in ('train', 'val'):
@@ -175,7 +179,7 @@ def hf_power(session, variant):
 
 # ---------------------------------------------------------------- arrays
 
-def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False):
+def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False, return_trials=False):
     """Decoder inputs and target velocities for one session's trials.
 
     Returns X (n, d) and Y (n, 2) with one row per 50 ms bin that has both
@@ -188,6 +192,9 @@ def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False):
     Validation and test sessions take the statistics from their calibration
     pool (blocks 1-2) only, so the query trials are never used for anything
     but the final R².
+
+    With return_trials=True, also returns each row's trial number, so subsets
+    of trials can be taken without cutting the windows again.
     """
     norm_rows = trial_rows(session, 'pool') if session in splits()['calibration'] else None
     feat = F.load_features(session, PATHS, variant=variant, normalize=True, trials=norm_rows)
@@ -205,8 +212,12 @@ def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False):
         X = np.concatenate([X, ((power - median) / spread)[:, :, None]], axis=2)
     feat = dict(feat, X=np.clip(X, -CLIP_Z, CLIP_Z))  # NaN stays NaN
 
-    X, Y, valid, _ = F.trial_arrays(feat, trial_rows(session, part), kin=kinematics(session),
+    rows = trial_rows(session, part)
+    X, Y, valid, _ = F.trial_arrays(feat, rows, kin=kinematics(session),
                                     align=ALIGN, pre=PRE, post=POST, n_lags=n_lags, kin_cols=KIN_COLS)
+    if return_trials:
+        trial_ids = np.repeat(rows.trial.to_numpy()[:, None], valid.shape[1], axis=1)
+        return X[valid], Y[valid], trial_ids[valid]
     return X[valid], Y[valid]
 
 
@@ -279,6 +290,38 @@ def ridge_path(X, Y, lambdas):
         W = weights(qty / (e + lam)[:, None])
         models.append(RidgeModel(W=W, b=y_mean - x_mean @ W, lam=float(lam)))
     return models
+
+
+# Penalties for refitting a trained decoder on a few labeled trials (SameDayAdapter):
+# 1 to 10^8 in half decades, then inf = keep the trained decoder unchanged.
+MUS = np.concatenate([np.logspace(0, 8, 17), [np.inf]])
+
+
+class SameDayAdapter:
+    """Refits a trained ridge model on a few labeled bins from one session.
+
+    With X, Y centered on those bins, W = W0 + D where D minimizes
+    ||(Y - X W0) - X D||² + mu ||D||², i.e. D = Xᵀ (X Xᵀ + mu I)⁻¹ (Y - X W0).
+    The intercept is refit on the same bins. With fewer bins than inputs this
+    uses the eigendecomposition X Xᵀ = Q E Qᵀ, computed once for every mu.
+    Used for same-day OFF calibration (task3_1_ridge_gru_matched.py) and for
+    the traditional pipeline's refit on k stimulation trials (task3_2_parrm.py).
+    """
+
+    def __init__(self, X, Y):
+        self.x_mean = X.mean(axis=0, dtype=np.float64)
+        self.y_mean = Y.mean(axis=0, dtype=np.float64)
+        self.Xc = X.astype(np.float64) - self.x_mean
+        self.Yc = Y.astype(np.float64) - self.y_mean
+        e, self.Q = np.linalg.eigh(self.Xc @ self.Xc.T)
+        self.e = np.maximum(e, 0.0)
+
+    def fit(self, base, mu):
+        if np.isinf(mu):
+            return base
+        residual = self.Yc - self.Xc @ base.W
+        W = base.W + self.Xc.T @ (self.Q @ ((self.Q.T @ residual) / (self.e + mu)[:, None]))
+        return RidgeModel(W=W, b=self.y_mean - self.x_mean @ W, lam=base.lam)
 
 
 def r2(Y, Y_pred):

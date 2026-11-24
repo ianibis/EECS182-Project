@@ -10,7 +10,7 @@ This package contains the ridge scripts and a shorter GRU evaluation pipeline fo
 | `Task3/task3_1_ridge_semisynthetic.py` | Ridge on recorded, PARRM-cleaned and 10x ON features |
 | `Task3/task3_1_ridge_gru_matched.py` | Ridge with the GRU's 9 features, 19 lags and same-day calibration on 20 OFF trials |
 | `Task3/task3_make_amp10_features.py` | 10x ON feature caches from the local `data/` layout |
-| `Task3/task3_2_parrm.py` | Ridge on recorded versus PARRM-cleaned ON features (3.2) |
+| `Task3/task3_2_parrm.py` | Traditional pipeline (3.2): OFF ridge on recorded vs. PARRM-cleaned ON features (k = 0), then PARRM + ridge refit on k = 2, 5, 10, 20 labeled ON trials |
 | `Task3/task3_3_stif.py` | Stimulation monitor-only control (3.3) |
 | `Task3/task3_1_xgboost.py` | Optional tree-model comparison |
 | `Task3/task3_gru_results.py` | GRU OFF/ON, PARRM, and 10x comparisons (3.1–3.2) |
@@ -32,7 +32,9 @@ python Task3/task3_gru_results.py --split test --dataset all
 
 The GRU script writes `results/task3_gru/task3_gru_test_sessions.csv`, `task3_gru_test_off.csv`, `task3_gru_test_summary.csv`, and `task3_gru_test_parrm.csv`. Use `--split val` to check the validation sessions. The output distinguishes recorded, PARRM-cleaned, and 10x ON inputs and reports matched same-day OFF scores. Missing original or PARRM feature caches are computed from the corresponding recording and saved. The 10x feature caches must first be produced by the generator.
 
-The five GRU checkpoint files and the two original calibration CV CSVs must be present under `results/task3/`. They are deliberately not included here. They were generated earlier on the lab machine; see `docs/file_map.md`. The ridge scripts select their own linear hyperparameters and do not use the GRU checkpoint. Their default 9-lag ridge result is **not** the same experiment as the later 19-lag residual ridge result reported in the project notes.
+The five GRU checkpoint files and the two original calibration CV CSVs must be present under `results/task3/`. They are deliberately not included here. They were generated earlier on the lab machine; see `docs/file_map.md`. The ridge scripts select their own linear hyperparameters and do not use the GRU checkpoint. They use LMP + 7 band powers per channel and default to 19 lags (1 s of history, as in the GRU); earlier results used 9 lags (`--lags 9`). These are **not** the same experiment as the later 19-lag residual ridge result reported in the project notes.
+
+**Traditional pipeline (`task3_2_parrm.py`).** The OFF ridge decoder W0 is refit on k labeled, PARRM-cleaned trials of each stimulation-ON session, minimizing `||Y - XW - b||² + mu ||W - W0||²`. The k trials are the 10 draws per session in `splits.json` (`calibration[session].subsets[k]`, from blocks 1-2). mu is chosen for each k on the validation-day ON sessions, and the refit models are scored on the query trials (blocks 3-5). k = 0 is the OFF decoder on PARRM features. The summary reports the mean R² per condition and k, a 95% bootstrap interval over sessions, and the fraction of the ON-OFF loss recovered. Features of every validation and test session are normalized with its 20 calibration-pool trials (features only, no labels), even when k < 20.
 
 ## Data location
 
