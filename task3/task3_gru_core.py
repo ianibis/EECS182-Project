@@ -9,6 +9,8 @@ import pandas as pd
 import torch
 from torch import nn
 
+from task3_paths import DATA_ROOT, GRU_RESULTS, data_paths, feature_root, gru_artifact, metadata_path
+
 import EECS182_NHP_data_loader as loader
 import EECS182_NHP_features as features
 
@@ -19,18 +21,12 @@ SEEDS = (1, 2, 3, 4, 5)
 
 
 def paths(root):
-    return loader.Paths(
-        root=str(root),
-        export_dir=str(root / 'export_outputs' / 'h5_export_outputs'),
-        trial_dir=str(root / 'export_outputs' / 'trials'),
-        parrm_dir=str(root / 'parrm_outputs' / 'parrm_h5'),
-        kin_dir=str(root / 'kinematics_v3' / 'bins50ms'),
-    )
+    return data_paths(root)
 
 
 def read_project(root):
-    manifest = pd.read_csv(root / 'EECS182_data_manifest.csv').set_index('session', drop=False)
-    with (root / 'splits.json').open() as file:
+    manifest = pd.read_csv(metadata_path(root, 'EECS182_data_manifest.csv')).set_index('session', drop=False)
+    with metadata_path(root, 'splits.json').open() as file:
         splits = json.load(file)
     return manifest, splits
 
@@ -48,52 +44,58 @@ def trials(session, part, project_paths, splits):
     return table[table.trial.isin(numbers)]
 
 
-def feature_variant(source):
+def feature_variant(source, root=DATA_ROOT):
     if source == 'recorded':
         return 'export_none'
     if source == 'parrm':
         return 'parrm_none'
     if source == 'amp10':
+        legacy = 'task3_parrm_amp_s0010p000'
+        if (feature_root(root) / 'features' / legacy).is_dir():
+            return legacy
         return 'parrm_amp10'
     raise ValueError(f'Unknown source: {source}')
 
 
 def high_band_path(root, session, source):
     if source == 'amp10':
-        folder = 'parrm_amp10'
+        feature_dir = feature_root(root) / 'features'
+        for folder in ('task3_parrm_amp_hf_s0010p000', 'parrm_amp10_hf', 'hf200_400_amp10'):
+            candidate = feature_dir / folder / f'{session}.h5'
+            if candidate.is_file():
+                return candidate
+        folder = 'task3_parrm_amp_hf_s0010p000'
     elif source == 'recorded':
         # These already exist for the OFF data and the 1x artifact sweep.
-        legacy = root / 'features' / 'hf200_400_off' / f'{session}.h5'
+        legacy = feature_root(root) / 'features' / 'hf200_400_off' / f'{session}.h5'
         if legacy.is_file():
             return legacy
-        scale_one = root / 'features' / 'parrm_amp10_hf' / f'{session}.h5'
+        scale_one = feature_root(root) / 'features' / 'task3_parrm_amp_hf_s0001p000' / f'{session}.h5'
         if scale_one.is_file():
             return scale_one
         folder = 'hf200_400_export'
     else:
         folder = 'hf200_400_parrm'
-    return root / 'features' / folder / f'{session}.h5'
+    return feature_root(root) / 'features' / folder / f'{session}.h5'
 
 
-def prepare_features(root, session, source, project_paths, manifest):
-    variant = feature_variant(source)
-    base = root / 'features' / variant / f'{session}.h5'
-    high = high_band_path(root, session, source)
+def prepare_features(root, session, source, project_paths, manifest, *, high=None):
+    variant = feature_variant(source, root)
+    base = feature_root(root) / 'features' / variant / f'{session}.h5'
+    high = high if high is not None else high_band_path(root, session, source)
 
     if source == 'amp10':
         if not base.is_file() or not high.is_file():
             raise FileNotFoundError(
                 f'{session}: missing 10x feature cache. Run task3_make_semisynthetic_h5_v1.py first.')
-        return
+        return high
 
     if not base.is_file():
-        base.parent.mkdir(parents=True, exist_ok=True)
-        recording = features.compute_session(session, project_paths,
-                                             source='parrm' if source == 'parrm' else 'export',
-                                             reference='none', manifest=manifest)
-        features.save_session(recording, str(base))
-        print(f'    made {base.relative_to(root)}', flush=True)
+        raise FileNotFoundError(f'Missing required base features: {base}')
 
+    if not high.is_file():
+        cache_dir = GRU_RESULTS / 'feature_cache' / high.parent.name
+        high = cache_dir / high.name
     if not high.is_file():
         recording = loader.load_session(session, project_paths,
                                         source='parrm' if source == 'parrm' else 'export',
@@ -110,15 +112,21 @@ def prepare_features(root, session, source, project_paths, manifest):
             file.create_dataset('channel_ids', data=recording.channels)
             file.create_dataset('logpow', data=power, compression='gzip')
             file.attrs['band_hz'] = BAND
-        print(f'    made {high.relative_to(root)}', flush=True)
+        print(f'    made {high}', flush=True)
+    return high
 
 
-def session_features(root, session, source, project_paths, splits, manifest):
-    prepare_features(root, session, source, project_paths, manifest)
-    norm_rows = trials(session, 'pool', project_paths, splits)
-    feat = features.load_features(session, project_paths, variant=feature_variant(source),
-                                  normalize=True, trials=norm_rows)
-    high = high_band_path(root, session, source)
+def session_features(root, session, source, project_paths, splits, manifest,
+                     *, high=None, build_missing=True):
+    high = high if high is not None else high_band_path(root, session, source)
+    if build_missing:
+        high = prepare_features(root, session, source, project_paths, manifest, high=high)
+
+    calibration_trials = trials(session, 'pool', project_paths, splits)
+    feat = features.load_features(
+        session, project_paths, variant=feature_variant(source, root),
+        normalize=True, trials=calibration_trials,
+    )
     with h5py.File(high, 'r') as file:
         ids = file['bin_id'][:]
         channels = file['channel_ids'][:]
@@ -129,13 +137,14 @@ def session_features(root, session, source, project_paths, splits, manifest):
         raise ValueError(f'{session}: high-frequency channel order differs')
 
     start, stop = feat['norm']['window']
-    inside = (ids * loader.BIN_S >= start) & ((ids + 1) * loader.BIN_S <= stop)
-    median = np.nanmedian(power[inside], axis=0)
-    spread = 1.4826 * np.nanmedian(abs(power[inside] - median), axis=0)
+    in_calibration = (ids * loader.BIN_S >= start) & ((ids + 1) * loader.BIN_S <= stop)
+    calibration_power = power[in_calibration]
+    median = np.nanmedian(calibration_power, axis=0)
+    spread = 1.4826 * np.nanmedian(abs(calibration_power - median), axis=0)
     spread[~(spread > 0)] = 1.0
-    extra = (power - median) / spread
-    x = np.concatenate([feat['X'], extra[:, :, None]], axis=2)
-    feat['X'] = np.clip(x, -10.0, 10.0)
+    normalized_power = (power - median) / spread
+    combined = np.concatenate([feat['X'], normalized_power[..., None]], axis=2)
+    feat['X'] = np.clip(combined, -10.0, 10.0)
     feat['feature_names'] = [*features.FEATURE_NAMES, 'pow_200_400']
     return feat
 
@@ -214,11 +223,12 @@ def load_models(root, checkpoint_path, device):
         raise ValueError('Expected nine LFP features per channel')
     if saved['run_config']['seed'] != 1:
         raise ValueError('Expected seed-1 checkpoint')
-    checkpoints = root / 'results' / 'task3' / 'checkpoints'
     states = {1: saved['state_dict']}
     epoch = int(saved['best_epoch'])
     for seed in SEEDS[1:]:
-        path = checkpoints / f'task3_gru_ensemble_v1_seed{seed}_epoch{epoch}.pt'
+        filename = f'task3_gru_ensemble_v1_seed{seed}_epoch{epoch}.pt'
+        sibling = checkpoint_path.with_name(filename)
+        path = sibling if sibling.is_file() else gru_artifact('ensemble/checkpoints', filename, root)
         if not path.is_file():
             raise FileNotFoundError(f'Missing ensemble checkpoint: {path}')
         another = torch.load(path, map_location='cpu', weights_only=False)
@@ -234,11 +244,10 @@ def load_models(root, checkpoint_path, device):
 
 
 def calibration_settings(root):
-    results = root / 'results' / 'task3'
-    full = pd.read_csv(results / 'task3_gru_full_finetune_v1_pool_cv.csv')
+    full = pd.read_csv(gru_artifact('calibration', 'task3_gru_full_finetune_v1_pool_cv.csv', root))
     selected = full.sort_values('pool_cv_mse').iloc[0]
     lr, epochs = float(selected.lr), int(selected.epochs)
-    table = pd.read_csv(results / 'task3_gru_temporal_adapt_v1_pool_cv.csv')
+    table = pd.read_csv(gru_artifact('calibration', 'task3_gru_temporal_adapt_v1_pool_cv.csv', root))
     options = {}
     for method in ('time', 'full'):
         choices = []
@@ -258,7 +267,8 @@ def fit_session(config, state, pool, scale, device, lr, epochs, seed):
     for layer in (model.projection, model.gru, model.readout):
         for param in layer.parameters():
             param.requires_grad_(True)
-    model.eval()  # same as the validated fit: no dropout during fine-tuning
+    # Disable dropout during calibration.
+    model.eval()
     parameters = [p for p in model.parameters() if p.requires_grad]
     original = [p.detach().clone() for p in parameters]
     optimizer = torch.optim.Adam(parameters, lr=lr)
@@ -312,10 +322,12 @@ def correct_time(pool, pool_pred, target, target_pred, scale, choices):
             continue
         mask = pool['valid']
         length = pool['position'].shape[1]
-        matrix = cosine_basis(pool['position'][mask], count, length)
+        basis = cosine_basis(pool['position'][mask], count, length)
         residual = ((pool['Y'] - pool['baseline']) / scale - pool_pred)[mask, axis]
-        coef = np.linalg.solve(matrix.T @ matrix / len(residual) + lam * np.eye(count),
-                               matrix.T @ residual / len(residual))
+        n_bins = len(residual)
+        covariance = basis.T @ basis / n_bins
+        rhs = basis.T @ residual / n_bins
+        coef = np.linalg.solve(covariance + lam * np.eye(count), rhs)
         fixed[..., axis] += cosine_basis(target['position'], count, length) @ coef
     return fixed
 

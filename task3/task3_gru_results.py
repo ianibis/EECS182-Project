@@ -7,11 +7,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-REPO = Path(__file__).resolve().parent.parent
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
+from task3_paths import DATA_ROOT, GRU_RESULTS, gru_artifact
 
 import task3_gru_core as gru
+from task3_gru_evaluate import parrm_high_path
 
 
 def evaluate(root, split, dataset, checkpoint, output, device):
@@ -28,12 +27,17 @@ def evaluate(root, split, dataset, checkpoint, output, device):
         raise ValueError('Saved GRU features differ from this pipeline')
     print(f'Using five pretrained GRUs; fine-tuning lr={lr}, epochs={epochs}', flush=True)
     print(f'Temporal settings: {choices}', flush=True)
-    print(f'Query labels are used only for scoring; source={dataset}, split={split}')
+    print(f'Evaluating {dataset} on {split} queries')
 
     on_sessions = [name for name in splits['sessions'][split]
                    if manifest.loc[name, 'condition'] in ('am3hz', 'am20hz')]
     if not on_sessions:
         raise ValueError(f'No stimulation sessions in {split}')
+    sources = {
+        'all': ('recorded', 'amp10', 'parrm'),
+        'recorded': ('recorded', 'parrm'),
+        'amp10': ('recorded', 'amp10'),
+    }[dataset]
     off_models = {}
     off_rows = []
     rows = []
@@ -61,23 +65,19 @@ def evaluate(root, split, dataset, checkpoint, output, device):
             print(f'    OFF R² = {score["r2"]:.4f}', flush=True)
 
         pool, off_pred, models, off_score = off_models[off]
-        wanted = ['recorded']
-        if dataset in ('amp10', 'all'):
-            wanted.append('amp10')
-        if dataset in ('recorded', 'all'):
-            wanted.append('parrm')
-
-        old_bins = None
-        for source in wanted:
+        recorded_mask = None
+        for source in sources:
             print(f'  {session}: {source}', flush=True)
-            feat = gru.session_features(root, session, source, project_paths, splits, manifest)
+            high_path = parrm_high_path(root, session, source)
+            feat = gru.session_features(root, session, source, project_paths, splits, manifest,
+                                        high=high_path)
             query = gru.trial_batch(feat, session, 'query', project_paths, splits,
                                     manifest, profile, history)
             if len(query['trial_ids']) != 30:
                 raise ValueError(f'{session}: expected 30 query trials')
-            if old_bins is None:
-                old_bins = query['valid'].copy()
-            elif not np.array_equal(old_bins, query['valid']):
+            if recorded_mask is None:
+                recorded_mask = query['valid'].copy()
+            elif not np.array_equal(recorded_mask, query['valid']):
                 raise ValueError(f'{session}: scored bins differ between data variants')
             prediction = gru.average(models, query, device)
             corrected = gru.correct_time(pool, off_pred, query, prediction,
@@ -153,11 +153,11 @@ def self_test():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--root', type=Path, default=REPO,
+    parser.add_argument('--root', type=Path, default=DATA_ROOT,
                         help='Folder containing exports, features, splits.json, and checkpoints')
     parser.add_argument('--split', choices=('val', 'test'), default='test')
     parser.add_argument('--dataset', choices=('recorded', 'amp10', 'all'), default='all')
-    parser.add_argument('--output', type=Path, default=REPO / 'results' / 'task3_gru')
+    parser.add_argument('--output', type=Path, default=GRU_RESULTS / 'recording_modes')
     parser.add_argument('--checkpoint', type=Path, default=None)
     parser.add_argument('--device', choices=('auto', 'cpu', 'mps'), default='auto')
     parser.add_argument('--self-test', action='store_true')
@@ -169,8 +169,9 @@ def main():
     device = gru.device_name(args.device)
     ck = args.checkpoint
     if ck is None:
-        ck = (root / 'results' / 'task3' / 'checkpoints' /
-              'task3_gru_multitask_v1_augmented_all_lags19_h64_seed1_seljoint_cd0.1_sw0.2_dw0.2.pt')
+        ck = gru_artifact('checkpoints',
+                          'task3_gru_multitask_v1_augmented_all_lags19_h64_seed1_seljoint_cd0.1_sw0.2_dw0.2.pt',
+                          root)
     evaluate(root, args.split, args.dataset, ck, args.output, device)
 
 

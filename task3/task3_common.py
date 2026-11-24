@@ -24,31 +24,12 @@ if REPO not in sys.path:  # the shared loader and features scripts live at the r
 import EECS182_NHP_data_loader as L  # noqa: E402
 import EECS182_NHP_features as F     # noqa: E402
 
-RESULTS_DIR = os.path.join(REPO, 'task3_results')
+from task3_paths import DATA_ROOT, data_paths, metadata_path
 
-# Two data layouts are supported. Features are read from <DATA>/features/<variant>/ in both.
-if os.environ.get('TASK3_DATA_ROOT'):
-    # The Box project folder (EECS282_finalProject), which also holds the manifest and splits.
-    DATA = os.path.abspath(os.path.expanduser(os.environ['TASK3_DATA_ROOT']))
-    META = DATA
-    PATHS = L.Paths(
-        root=DATA,
-        export_dir=os.path.join(DATA, 'export_outputs', 'h5_export_outputs'),
-        trial_dir=os.path.join(DATA, 'export_outputs', 'trials'),
-        parrm_dir=os.path.join(DATA, 'parrm_outputs', 'parrm_h5'),
-        kin_dir=os.path.join(DATA, 'kinematics_v3', 'bins50ms'),
-    )
-else:
-    # A local copy in data/ inside the repository; manifest and splits from the repository root.
-    DATA = os.path.join(REPO, 'data')
-    META = REPO
-    PATHS = L.Paths(
-        root=DATA,
-        export_dir=os.path.join(DATA, 'exports', 'export_h5_LFPs'),
-        trial_dir=os.path.join(DATA, 'exports', 'export_trials'),
-        parrm_dir=os.path.join(DATA, 'parrm', 'parrm_h5_LFPs'),
-        kin_dir=os.path.join(DATA, 'kinematics_bins50ms', 'bins50ms'),
-    )
+RESULTS_DIR = os.path.join(REPO, 'task3_results')
+PATHS = data_paths(DATA_ROOT)
+DATA = PATHS.root
+META = str(metadata_path(DATA_ROOT, 'splits.json').parent)
 
 # Trial window and feature history: 0.5 s before the go cue to 1.5 s after it
 # (40 bins of 50 ms), each bin also seeing the 19 bins before (1 s including the
@@ -65,18 +46,22 @@ CLIP_Z = 10.0
 # decoder was dropped: it scored lower, validation R² 0.021 vs. 0.035 with 9 lags.)
 FEATURES = list(F.FEATURE_NAMES)  # ['lmp', 'pow_1_4', ..., 'pow_130_200']
 FEATURE_SET = 'lmp+bands'         # label written to the result files
+FEATURE_SETS = {
+    'bands': [name for name in FEATURES if name.startswith('pow_')],
+    'lmp+bands': FEATURES,
+}
 
 
 # ---------------------------------------------------------------- metadata
 
 @lru_cache(maxsize=None)
 def manifest():
-    return pd.read_csv(os.path.join(META, 'EECS182_data_manifest.csv')).set_index('session', drop=False)
+    return pd.read_csv(metadata_path(DATA_ROOT, 'EECS182_data_manifest.csv')).set_index('session', drop=False)
 
 
 @lru_cache(maxsize=None)
 def splits():
-    with open(os.path.join(META, 'splits.json')) as file:
+    with open(metadata_path(DATA_ROOT, 'splits.json')) as file:
         return json.load(file)
 
 
@@ -179,7 +164,7 @@ def hf_power(session, variant):
 
 # ---------------------------------------------------------------- arrays
 
-def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False, return_trials=False):
+def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False, return_trials=False, *, feature_set=None):
     """Decoder inputs and target velocities for one session's trials.
 
     Returns X (n, d) and Y (n, 2) with one row per 50 ms bin that has both
@@ -198,7 +183,12 @@ def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False, return_trial
     """
     norm_rows = trial_rows(session, 'pool') if session in splits()['calibration'] else None
     feat = F.load_features(session, PATHS, variant=variant, normalize=True, trials=norm_rows)
-    assert feat['feature_names'] == FEATURES
+    if feature_set is None:
+        assert feat['feature_names'] == FEATURES
+    else:
+        names = FEATURE_SETS[feature_set]
+        indices = [feat['feature_names'].index(name) for name in names]
+        feat = dict(feat, X=feat['X'][:, :, indices], feature_names=names)
     X = feat['X']
     if hf:
         bin_ids, channels, power = hf_power(session, variant)
@@ -221,9 +211,11 @@ def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False, return_trial
     return X[valid], Y[valid]
 
 
-def stack_arrays(session_list, variant, part, n_lags=N_LAGS, hf=False):
+def stack_arrays(session_list, variant, part, n_lags=N_LAGS, hf=False, *, feature_set=None):
     """session_arrays() for several sessions, concatenated."""
-    pairs = [session_arrays(s, variant, part, n_lags, hf) for s in session_list]
+    options = {} if feature_set is None else {'feature_set': feature_set}
+    pairs = [session_arrays(s, variant, part, n_lags=n_lags, hf=hf, **options)
+             for s in session_list]
     return np.concatenate([x for x, _ in pairs]), np.concatenate([y for _, y in pairs])
 
 
@@ -342,12 +334,13 @@ LAMBDAS = np.logspace(0, 6, 13)                # 1 to 10^6, half-decade steps
 PARRM_VARIANT = {'export_none': 'parrm_none', 'export_car': 'parrm_car'}  # cleaned counterpart
 
 
-def run_tag(n_lags):
+def run_tag(n_lags, *, feature_set=None):
     """File-name tag for one setting, e.g. 'lmp_bands_lags9'."""
-    return f"{FEATURE_SET.replace('+', '_')}_lags{n_lags}"
+    name = FEATURE_SET if feature_set is None else feature_set
+    return f"{name.replace('+', '_')}_lags{n_lags}"
 
 
-def fit_off_decoder(n_lags=N_LAGS):
+def fit_off_decoder(n_lags=N_LAGS, *, feature_set=None):
     """Train the OFF decoder and choose λ and the reference on the validation days.
 
     Fits on the 'train' trials of the training-day no-stim sessions (July 11
@@ -364,17 +357,18 @@ def fit_off_decoder(n_lags=N_LAGS):
     print(f'Training on {len(train_sessions)} OFF sessions (training days, held-out block excluded); '
           f'choosing lambda on {len(val_sessions)} validation-day OFF sessions.')
 
+    options = {} if feature_set is None else {'feature_set': feature_set}
     rows, fitters = [], {}
     for variant in REFERENCES:
-        X, Y = stack_arrays(train_sessions, variant, 'train', n_lags)
+        X, Y = stack_arrays(train_sessions, variant, 'train', n_lags, **options)
         fitters[variant] = RidgeFitter(X, Y)
         print(f'  {variant}: {X.shape[0]:,} training bins x {X.shape[1]:,} inputs')
         del X, Y
-        val = {s: session_arrays(s, variant, 'query', n_lags) for s in val_sessions}
+        val = {s: session_arrays(s, variant, 'query', n_lags, **options) for s in val_sessions}
         for lam in LAMBDAS:
             model = fitters[variant].fit(lam)
             per_session = {s: r2(Yv, model.predict(Xv)).mean() for s, (Xv, Yv) in val.items()}
-            rows.append(dict(feature_set=FEATURE_SET, n_lags=n_lags, reference=variant, lam=lam,
+            rows.append(dict(feature_set=feature_set or FEATURE_SET, n_lags=n_lags, reference=variant, lam=lam,
                              val_r2_mean=np.mean(list(per_session.values())),
                              **{f'val_r2_{s}': v for s, v in per_session.items()}))
 
