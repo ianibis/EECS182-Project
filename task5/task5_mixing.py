@@ -84,6 +84,8 @@ def apply_mixing(lfp, mixing, channel_keep):
 
 def mix_episode(episode, alpha_max, generator):
     """Apply one new mixing matrix to all trials of each episode."""
+    if alpha_max == 0:
+        return episode
     n_episodes = len(episode.query_lfp)
     device = episode.query_lfp.device
     strength = alpha_max * torch.rand(n_episodes, generator=generator, device=device)
@@ -96,7 +98,8 @@ def mix_episode(episode, alpha_max, generator):
     return replace(episode, context_lfp=context, query_lfp=query)
 
 
-def train_with_mixing(name, alpha_max, seed, iterations=FINAL_ITERATIONS, device='cuda'):
+def train_with_mixing(name, alpha_max, seed, iterations=FINAL_ITERATIONS, device='cuda',
+                      model_class=InContextDecoder):
     """The same training as task5_train.train, with channel mixing added to every episode."""
     run_dir = os.path.join(cfg.RUNS_DIR, name)
     if os.path.exists(os.path.join(run_dir, 'summary.json')):
@@ -113,7 +116,7 @@ def train_with_mixing(name, alpha_max, seed, iterations=FINAL_ITERATIONS, device
     bank, library = OffTrialBank(device), TemplateLibrary(device)
     baseline = LabelsOnlyBaseline()
     generator = torch.Generator(device=device).manual_seed(seed)
-    model = InContextDecoder(model_config).to(device)
+    model = model_class(model_config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     print(f'[{name}] {count_parameters(model):,} parameters, {iterations} iterations', flush=True)
 

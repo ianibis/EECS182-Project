@@ -70,13 +70,13 @@ def predict(model, held, signal, positions, chunk=10):
     return torch.cat(outputs)
 
 
-def score_all(device='cuda', runs=None):
+def score_all(device='cuda', runs=None, loader=load_model):
     """Score each run. `runs` maps a seed to a run name; the default is the 5 final in-context models."""
     runs = runs or {seed: run_name('in_context', seed) for seed in SEEDS}
     sessions = data.usable_sessions(SPLIT, 'stim')
     rows = []
     for seed, name in runs.items():
-        model, scale, _ = load_model(name, device)
+        model, scale, _ = loader(name, device)
         for session in sessions:
             off_session = load_held_out(C.splits()['off_reference'][session], 'recorded', scale, device)
             for input_name in ('recorded', 'amp10'):
