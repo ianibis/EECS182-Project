@@ -36,3 +36,21 @@ Keep the existing ridge scripts, shared `EECS182_NHP_data_loader.py` and `EECS18
 | `features/parrm_amp10_hf/` | 48 files with the additional 200–400 Hz feature. |
 
 
+
+## Task 4
+
+Code and outputs live together under `task4/`.
+
+| Path | Purpose |
+|---|---|
+| `task4/utils.py` | Shared data loaders, metrics, training loop, decoders, draws sampler and reporting helpers. |
+| `task4/task4_1_draws.ipynb` | Task 4.1: sample k-shot ON draws, write the draws file with the leftover ON trials as query. |
+| `task4/task4_2_eegnet.ipynb` | Task 4.2: braindecode EEGNet adapted to regression, early stopping, 5 seeds vs ridge 3.1. |
+| `task4/task4_3_parrm_ridge.ipynb` | Task 4.3: PARRM cleaning then ridge refit on each draw. |
+| `task4/make_draws.py` | CLI wrapper over `utils.build_draws` for the 4.1 draws. |
+| `task4/results/draws.json` | 4.1 output: 14 test stim sessions × k∈{2,5,10,20} × 10 draws, query = leftover ON trials. |
+| `task4/results/draws_fixed_query_legacy.json` | Archived fixed-query draws used by the earlier baseline run. |
+| `task4/results/` | Task 4 metric tables (`task4_1_draws_summary.csv`, `task4_2_*.csv`, `task4_3_*.csv`). |
+| `task4/checkpoints/` | Task 4 model weights. |
+| `task4/training_logs/` | Per-epoch training logs. |
+| `task4/figures/` | Task 4 figures. |

@@ -21,3 +21,9 @@ __pycache__/
 __MACOSX/
 .DS_Store
 Thumbs.db
+
+# kaggle bundle (hardlinked data, rebuilt by kaggle/build_dataset.py)
+kaggle/dataset/
+kaggle/kernel/
+kaggle/out/
+task4_2_run/

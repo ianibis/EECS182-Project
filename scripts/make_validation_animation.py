@@ -14,7 +14,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
-import notebook_api
+sys.path.insert(0, os.path.join(ROOT, "task4"))
+import utils as U
 
 SESSION = 'Butters-250523-095602'
 TRIAL = 43
@@ -23,14 +24,8 @@ PRE = 0.5
 COLORS = {'truth': '#2f5d8a', 'pred': '#d9772a', 'error': '#c0392b', 'grey': '#5c6670', 'gold': '#c99a2e'}
 
 
-def notebook_namespace():
-    """Load the notebook's shared data and model cells."""
-    return notebook_api.load()
-
-
 def load_data():
-    ns = notebook_namespace()
-    dataset = ns['load_split_dataset'](SESSION, 'query', 'export_none', 9)
+    dataset = U.load_split_dataset(SESSION, 'query', 'export_none', 9)
     check = np.load('results/checkpoints/ridge_raw.npz')
     W, intercept = check['coefficients'], check['intercept']
     X = dataset['features'].astype(np.float64)
@@ -38,8 +33,8 @@ def load_data():
     valid = dataset['valid_bins']
     prediction = X @ W + intercept
     trial_index = int(np.flatnonzero(dataset['trials'] == TRIAL)[0])
-    session_r2 = ns['mean_r2'](Y, prediction, valid)
-    trial_r2 = ns['mean_r2'](Y[trial_index], prediction[trial_index], valid[trial_index])
+    session_r2 = U.mean_r2(Y, prediction, valid)
+    trial_r2 = U.mean_r2(Y[trial_index], prediction[trial_index], valid[trial_index])
     return Y[trial_index], prediction[trial_index], valid[trial_index], session_r2, trial_r2
 
 

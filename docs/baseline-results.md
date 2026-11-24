@@ -25,7 +25,7 @@ training split and never see the calibration trials.
 | GRU | 0 | 0.026 | 0.030 | 0.036 | 0.029 |
 
 \* Stale. These EEGNet off scores came from the stimulated session instead of the no-stimulation
-reference. The code is fixed, so rerun the EEGNet section of `cs182_decoder_grouped.ipynb` or set `RUN_PIPELINE = True` to replace them.
+reference. The code is fixed, so rerun the EEGNet section of `task4/task4_2_eegnet.ipynb` to replace them.
 
 ## What the numbers say
 
@@ -93,7 +93,7 @@ in those panels.
 
 | Path | Contents |
 |---|---|
-| `results/draws.json` | 14 test stim sessions × k∈{2,5,10,20} × 10 nested draws, fixed query set |
+| `task4/results/draws_fixed_query_legacy.json` | 14 test stim sessions × k∈{2,5,10,20} × 10 nested draws, fixed query set (baseline run; task 4.1 supersedes it) |
 | `results/table_main.csv` | per method × frequency × k: mean R² with 95 % CI, off R², SEM |
 | `results/table_recovery.csv` | ρ with 95 % bootstrap CI (unstable, see above) |
 | `results/fig*.png` | the figure suite above |

@@ -14,7 +14,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
-import notebook_api
+sys.path.insert(0, os.path.join(ROOT, "task4"))
+import utils as U
 
 OUT = os.path.join('reports', 'baselines', 'diagnostics')
 os.makedirs(OUT, exist_ok=True)
@@ -22,7 +23,6 @@ plt.rcParams.update({'font.size': 8, 'axes.titlesize': 9, 'axes.labelsize': 8,
                      'axes.spines.top': False, 'axes.spines.right': False,
                      'figure.dpi': 160, 'savefig.bbox': 'tight'})
 
-ns = notebook_api.load(extra=notebook_api.KNN + notebook_api.NEURAL)
 
 session = 'Butters-250616-102124'
 methods = ['Ridge', 'KNN', 'MLP', 'GRU', 'EEGNet']
@@ -30,35 +30,35 @@ colors = {'Ridge': '#1f77b4', 'KNN': '#2ca02c', 'MLP': '#d62728',
           'GRU': '#9467bd', 'EEGNet': '#8c564b'}
 
 # ---------------------------------------------------------------- predictions
-q9 = ns['load_split_dataset'](session, 'query', 'export_none', 9)
-X9, y9 = ns['valid_windows'](q9)
+q9 = U.load_split_dataset(session, 'query', 'export_none', 9)
+X9, y9 = U.windows_from_valid_bins(q9)
 v_tab = q9['valid_bins']
 
 ridge = np.load('results/checkpoints/ridge_raw.npz')
 p_ridge = X9 @ ridge['coefficients'] + ridge['intercept']
 
-X_bank, y_bank = ns['collect_windows'](ns['OFF_TRAIN_SESSIONS'], 'train', 'export_none', 9)
-knn = ns['KNNRegressor'](100).fit(X_bank, y_bank)
+X_bank, y_bank = U.concat_session_windows(U.OFF_TRAINING_SESSIONS, 'train', 'export_none', 9)
+knn = U.KNNRegressor(100).fit(X_bank, y_bank)
 p_knn = knn.predict(X9)
 
-mlp = ns['MLPRegressor'](X9.shape[1])
+mlp = U.MLPRegressor(X9.shape[1])
 mlp.load_state_dict(torch.load('results/checkpoints/mlp_seed0.pt', map_location='cpu'))
 mlp.eval()
-p_mlp = ns['predict'](mlp, X9)
+p_mlp = U.predict(mlp, X9)
 
-q0 = ns['load_split_dataset'](session, 'query', 'export_none', 0)
+q0 = U.load_split_dataset(session, 'query', 'export_none', 0)
 v_gru = q0['valid_bins']
-gru = ns['GRURegressor'](q0['features'].shape[-1])
+gru = U.GRURegressor(q0['features'].shape[-1])
 gru.load_state_dict(torch.load('results/checkpoints/gru_seed0.pt', map_location='cpu'))
 gru.eval()
-p_gru = ns['predict_trials'](gru, q0)[v_gru]
+p_gru = U.predict_trial_bins(gru, q0)[v_gru]
 
-eeg_q = ns['load_lfp_split'](session, 'query')
+eeg_q = U.load_lfp_split(session, 'query')
 v_eeg = eeg_q['valid_bins']
-eeg = ns['EEGNetRegressor'](eeg_q['features'].shape[1])
+eeg = U.EEGNetRegressor(eeg_q['features'].shape[1])
 eeg.load_state_dict(torch.load('results/checkpoints/eegnet_seed0.pt', map_location='cpu'))
 eeg.eval()
-p_eeg = ns['predict_trials'](eeg, eeg_q)[v_eeg]
+p_eeg = U.predict_trial_bins(eeg, eeg_q)[v_eeg]
 
 preds = {
     'Ridge': (y9, p_ridge, v_tab),
@@ -124,20 +124,20 @@ fig.colorbar(im, ax=axes, shrink=0.8)
 fig.savefig(os.path.join(OUT, '03_ridge_weights.png')); plt.close(fig)
 
 # ---------------------------------------------------------------- 04 knn neighbors
-val_sessions = ns['split_sessions']('val', 1)
-X_val, y_val = ns['collect_windows'](val_sessions, 'query', 'export_none', 9)
-calibration = ns['SPLITS']['calibration']
-cal = [ns['load_calibration_windows'](s, calibration[s]['subsets']['10'][0],
+val_sessions = U.sessions_in_split('val', 1)
+X_val, y_val = U.concat_session_windows(val_sessions, 'query', 'export_none', 9)
+calibration = U.SPLITS['calibration']
+cal = [U.load_calibration_windows(s, calibration[s]['subsets']['10'][0],
                                       calibration[s]['pool'], 'export_none', 9)
        for s in val_sessions]
 X_cal, y_cal = [np.concatenate(part) for part in zip(*cal)]
 scores_bank, scores_cal = [], []
-for n in ns['NEIGHBORS']:
-    scores_bank.append(ns['mean_r2'](y_val, ns['KNNRegressor'](n).fit(X_bank, y_bank).predict(X_val)))
-    scores_cal.append(ns['mean_r2'](y_val, ns['KNNRegressor'](n).fit(X_cal, y_cal).predict(X_val)))
+for n in U.KNN_NEIGHBOR_GRID:
+    scores_bank.append(U.mean_r2(y_val, U.KNNRegressor(n).fit(X_bank, y_bank).predict(X_val)))
+    scores_cal.append(U.mean_r2(y_val, U.KNNRegressor(n).fit(X_cal, y_cal).predict(X_val)))
 fig, ax = plt.subplots(figsize=(4.2, 2.4))
-ax.plot(ns['NEIGHBORS'], scores_bank, 'o-', label='stim-off bank')
-ax.plot(ns['NEIGHBORS'], scores_cal, 'o-', label='k=10 calibration')
+ax.plot(U.KNN_NEIGHBOR_GRID, scores_bank, 'o-', label='stim-off bank')
+ax.plot(U.KNN_NEIGHBOR_GRID, scores_cal, 'o-', label='k=10 calibration')
 ax.set_xscale('log'); ax.set_xlabel('neighbors'); ax.set_ylabel('validation R2')
 ax.legend(); ax.set_title('KNN neighbor sweep')
 fig.savefig(os.path.join(OUT, '04_knn_neighbors.png')); plt.close(fig)
@@ -151,7 +151,7 @@ for i, name in enumerate(methods):
         ax.scatter(y[:, j], p[:, j], s=4, alpha=0.25, color=colors[name])
         lim = [np.nanmin(y[:, j]), np.nanmax(y[:, j])]
         ax.plot(lim, lim, 'k--', lw=0.7)
-        ax.set_title(f'{name} {"vx" if j == 0 else "vy"} R2={ns["r2_per_output"](y, p)[j]:.3f}')
+        ax.set_title(f'{name} {"vx" if j == 0 else "vy"} R2={U.r2_per_target(y, p)[j]:.3f}')
         if j == 0: ax.set_ylabel('predicted')
         if i == len(methods) - 1: ax.set_xlabel('measured')
 fig.suptitle('prediction scatter, held-out query bins')

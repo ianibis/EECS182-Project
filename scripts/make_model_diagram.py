@@ -23,10 +23,10 @@ PRE, POST = 0.5, 1.5
 
 P = L.Paths(
     root=os.path.join(ROOT, 'data'),
-    export_dir=os.path.join(ROOT, 'data', 'exports', 'export_h5_LFPs'),
-    trial_dir=os.path.join(ROOT, 'data', 'exports', 'export_trials'),
-    parrm_dir=os.path.join(ROOT, 'data', 'parrm', 'parrm_h5_LFPs'),
-    kin_dir=os.path.join(ROOT, 'data', 'kinematics_bins50ms', 'bins50ms'),
+    export_dir=os.path.join(ROOT, 'data', 'export_outputs', 'h5_export_outputs'),
+    trial_dir=os.path.join(ROOT, 'data', 'export_outputs', 'trials'),
+    parrm_dir=os.path.join(ROOT, 'data', 'parrm_outputs', 'parrm_h5'),
+    kin_dir=os.path.join(ROOT, 'data', 'kinematics_v3', 'bins50ms'),
 )
 MANIFEST = L.load_manifest(P, os.path.join(ROOT, 'EECS182_data_manifest.csv'))
 SESSION_DATA = L.load_session(SESSION, P, with_lfp=True, manifest=MANIFEST)

@@ -12,33 +12,28 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
-import notebook_api
+sys.path.insert(0, os.path.join(ROOT, "task4"))
+import utils as U
 
 COLORS = {'raw': '#2f5d8a', 'parrm': '#d9772a', 'bank': '#2f7d5c', 'cal': '#7b4fa3'}
 LAGS = 9
 
 
-def notebook_namespace():
-    """Load the shared cells plus the KNN cell."""
-    return notebook_api.load(extra=notebook_api.KNN)
-
-
 def metrics(y, yhat, valid):
     """Return mean R2 and RMSE over valid bins."""
     err = (y - yhat)[valid]
-    return float(NS['mean_r2'](y, yhat, valid)), float(np.sqrt(np.mean(err ** 2)))
+    return float(U.mean_r2(y, yhat, valid)), float(np.sqrt(np.mean(err ** 2)))
 
 
-NS = notebook_namespace()
-SESSIONS_OFF = NS['split_sessions']('val', 0)
-SESSIONS_ON = NS['split_sessions']('val', 1)
+SESSIONS_OFF = U.sessions_in_split('val', 0)
+SESSIONS_ON = U.sessions_in_split('val', 1)
 
 
 def validation_sets(variant):
     return {
-        'off': [NS['valid_windows'](NS['load_split_dataset'](s, 'query', variant, LAGS))
+        'off': [U.windows_from_valid_bins(U.load_split_dataset(s, 'query', variant, LAGS))
                 for s in SESSIONS_OFF],
-        'on': [NS['valid_windows'](NS['load_split_dataset'](s, 'query', variant, LAGS))
+        'on': [U.windows_from_valid_bins(U.load_split_dataset(s, 'query', variant, LAGS))
                for s in SESSIONS_ON],
     }
 
@@ -57,33 +52,33 @@ def score_model(model, sets):
 print('Ridge alpha sweep')
 ridge = {}
 for variant, label in [('export_none', 'raw'), ('parrm_none', 'parrm')]:
-    X_train, y_train = NS['collect_windows'](NS['OFF_TRAIN_SESSIONS'], 'train', variant, LAGS)
+    X_train, y_train = U.concat_session_windows(U.OFF_TRAINING_SESSIONS, 'train', variant, LAGS)
     sets = validation_sets(variant)
     rows = []
-    for alpha in NS['ALPHAS']:
-        model = NS['RidgeRegressor'](alpha).fit(X_train, y_train)
+    for alpha in U.RIDGE_PENALTIES:
+        model = U.RidgeRegressor(alpha).fit(X_train, y_train)
         rows.append((alpha, score_model(model, sets)))
         print(label, alpha, rows[-1][1])
     ridge[label] = rows
 
 
 print('KNN neighbour sweep')
-X_bank, y_bank = NS['collect_windows'](NS['OFF_TRAIN_SESSIONS'], 'train', 'export_none', LAGS)
-X_val_off, y_val_off = NS['collect_windows'](SESSIONS_OFF, 'query', 'export_none', LAGS)
-X_val_on, y_val_on = NS['collect_windows'](SESSIONS_ON, 'query', 'export_none', LAGS)
-calibration = NS['SPLITS']['calibration']
-cal = [NS['load_calibration_windows'](s, calibration[s]['subsets'][str(NS['KNN_TUNE_K'])][0],
+X_bank, y_bank = U.concat_session_windows(U.OFF_TRAINING_SESSIONS, 'train', 'export_none', LAGS)
+X_val_off, y_val_off = U.concat_session_windows(SESSIONS_OFF, 'query', 'export_none', LAGS)
+X_val_on, y_val_on = U.concat_session_windows(SESSIONS_ON, 'query', 'export_none', LAGS)
+calibration = U.SPLITS['calibration']
+cal = [U.load_calibration_windows(s, calibration[s]['subsets'][str(U.CALIBRATION_TUNE_TRIALS)][0],
                                       calibration[s]['pool'], 'export_none', LAGS)
        for s in SESSIONS_ON]
 X_cal, y_cal = [np.concatenate(part) for part in zip(*cal)]
 
 knn = {'bank_off': [], 'bank_on': [], 'cal_on': []}
-for k in NS['NEIGHBORS']:
+for k in U.KNN_NEIGHBOR_GRID:
     for name, X_bank_part, y_bank_part, X_val, y_val in [
             ('bank_off', X_bank, y_bank, X_val_off, y_val_off),
             ('bank_on', X_bank, y_bank, X_val_on, y_val_on),
             ('cal_on', X_cal, y_cal, X_val_on, y_val_on)]:
-        yhat = NS['KNNRegressor'](k).fit(X_bank_part, y_bank_part).predict(X_val)
+        yhat = U.KNNRegressor(k).fit(X_bank_part, y_bank_part).predict(X_val)
         r2, rmse = metrics(y_val, yhat, np.ones(len(y_val), bool))
         knn[name].append((k, r2, rmse))
         print(name, k, r2, rmse)

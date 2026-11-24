@@ -29,12 +29,12 @@ trials recovers most of the 20 Hz loss; PARRM cleaning alone does not. Full tabl
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-jupyter lab cs182_decoder_grouped.ipynb
+jupyter lab task4/
 ```
 
-The notebook trains nothing on load. Set `RUN_PIPELINE = True` in the last cell to retrain
-every model and overwrite `results/`. Task 3 scripts read the data root from
-`TASK3_DATA_ROOT`; see [task3/task3_README.md](task3/task3_README.md).
+Task 4 runs as three notebooks under [task4/](task4), one per sub-task, sharing
+[task4/utils.py](task4/utils.py); see [task4/README.md](task4/README.md). Task 3 scripts read the
+data root from `TASK3_DATA_ROOT`; see [task3/task3_README.md](task3/task3_README.md).
 
 ```bash
 TASK3_DATA_ROOT="$PWD/data" .venv/bin/python task3/task3_1_ridge.py --lags 9
@@ -45,7 +45,11 @@ TASK3_DATA_ROOT="$PWD/data" .venv/bin/python task3/task3_1_ridge.py --lags 9
 Code and metadata only. `data/` (~15 GB) and `results/` stay local and are git-ignored.
 
 ```text
-cs182_decoder_grouped.ipynb     five baselines, grouped by predictor
+task4/                          calibration draws, EEGNet regression, PARRM ridge (task 4)
+  utils.py                      shared data, metrics, training, decoders, draws
+  task4_1_draws.ipynb           4.1 calibration draws
+  task4_2_eegnet.ipynb          4.2 braindecode EEGNet regression decoder
+  task4_3_parrm_ridge.ipynb     4.3 PARRM then ridge refit on each draw
 EECS182_NHP_data_loader.py      session, LFP and kinematics reader
 EECS182_NHP_features.py         LMP and band-power features
 EECS182_data_manifest.csv       70 rows, one per session

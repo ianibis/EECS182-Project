@@ -14,7 +14,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
-import notebook_api
+sys.path.insert(0, os.path.join(ROOT, "task4"))
+import utils as U
 
 SESSION = 'Butters-250522-095740'
 TRIAL = 5
@@ -23,14 +24,8 @@ PRE = 0.5
 COLORS = {'blue': '#2f5d8a', 'orange': '#d9772a', 'green': '#2f7d5c', 'grey': '#5c6670'}
 
 
-def notebook_namespace():
-    """Load the notebook's data and model cells."""
-    return notebook_api.load()
-
-
 def load_example():
-    ns = notebook_namespace()
-    dataset = ns['load_split_dataset'](SESSION, 'train', 'export_none', 9)
+    dataset = U.load_split_dataset(SESSION, 'train', 'export_none', 9)
     index = int(np.flatnonzero(dataset['trials'] == TRIAL)[0])
     X = dataset['features'][index].astype(np.float64)
     Y = dataset['targets'][index].astype(np.float64)

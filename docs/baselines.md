@@ -18,20 +18,20 @@ their rows carry `k=0`.
 
 ## Setup
 
-Data are not in version control. The notebook and `task3/` expect this layout:
+Data are not in version control. `task4/` and `task3/` expect this layout:
 
 | Path | Contents |
 |---|---|
-| `data/exports/export_h5_LFPs/` | `<session>.h5`, directly inside this directory |
-| `data/exports/export_trials/` | `<session>_trials.csv` |
-| `data/parrm/parrm_h5_LFPs/` | PARRM-cleaned `<session>.h5` |
-| `data/parrm/template_library.h5` | PARRM template library |
+| `data/export_outputs/h5_export_outputs/` | `<session>.h5`, directly inside this directory |
+| `data/export_outputs/trials/` | `<session>_trials.csv` |
+| `data/parrm_outputs/parrm_h5/` | PARRM-cleaned `<session>.h5` |
+| `data/parrm_outputs/template_library.h5` | PARRM template library |
 | `data/features/export_none/`, `data/features/parrm_none/` | Precomputed features |
-| `data/kinematics_bins50ms/bins50ms/` | 50 ms kinematics |
-| `EECS182_data_manifest.csv`, `splits.json` | Session metadata and fixed splits, read by the notebook and `task3/` |
+| `data/kinematics_v3/bins50ms/` | 50 ms kinematics |
+| `EECS182_data_manifest.csv`, `splits.json` | Session metadata and fixed splits, at the repository root |
 | `data/manifest.csv`, `data/splits.json` | Identical loader fallbacks for a `data/` root |
 
-`Paths.export_dir` must point at the directory that directly contains `<session>.h5`, which is why the notebook sets it to `data/exports/export_h5_LFPs`. The notebook passes the root manifest and splits paths to the loader. The `data/` copies keep the loader defaults working.
+`Paths.export_dir` must point at the directory that directly contains `<session>.h5`, which is why the notebook sets it to `data/export_outputs/h5_export_outputs`. `task4/utils.py` and `task3/task3_common.py` must agree on these paths; both currently do. Set `TASK3_DATA_ROOT` to point `task3/` at a different data root.
 
 ```bash
 python3 -m venv .venv
@@ -43,11 +43,27 @@ python3 -m venv .venv
 Run commands from the repository root.
 
 ```bash
-jupyter lab cs182_decoder_grouped.ipynb
-jupyter nbconvert --to notebook --execute cs182_decoder_grouped.ipynb --output cs182_decoder_grouped.executed.ipynb
+jupyter lab task4/
 ```
 
-Set `RUN_PIPELINE = True` in the last cell to retrain every model and overwrite `results/`. The default runs the saved checkpoints and writes figures. `scripts/make_diagnostics.py` rebuilds the report figures from `results/checkpoints` and `results/results_*.parquet`.
+Task 4 is split into three notebooks sharing [task4/utils.py](../task4/utils.py):
+
+| Notebook | Task |
+|---|---|
+| `task4/task4_1_draws.ipynb` | 4.1 k-shot calibration draws, query = remaining ON trials |
+| `task4/task4_2_eegnet.ipynb` | 4.2 braindecode EEGNet regression, early stopping, 5 seeds vs ridge |
+| `task4/task4_3_parrm_ridge.ipynb` | 4.3 PARRM cleaning then ridge refit on each draw |
+
+Outputs land beside the code: `task4/results/`, `task4/checkpoints/`, `task4/training_logs/`,
+`task4/figures/`. `scripts/make_diagnostics.py` rebuilds the report figures from
+`results/checkpoints` and `results/results_*.parquet`.
+
+The 4.1 draws have a command-line entry point that calls the same sampler:
+
+```bash
+.venv/bin/python task4/make_draws.py                        # writes task4/results/draws.json
+.venv/bin/python task4/make_draws.py --n-draws 20 --seed 7
+```
 
 Task 3 checks:
 
@@ -63,17 +79,19 @@ Outputs go to `results/task3/`. The baseline report is `reports/baselines/index.
 
 ## Design decisions worth knowing
 
-**Query set is fixed (option A).** `docs/project-spec.md` says "the remaining on trials are
-the query trials". Taken literally the scored set would change with k (48 trials at k=2,
-30 at k=20) and would contain pool trials, so pool-fitted feature normalisation would see
-query data. The fixed 30-trial set (blocks 3–5) keeps R² comparable across k, draws, seeds
-and methods, and keeps `pool ∩ query = ∅`.
+**Query set: fixed in the earlier baselines, leftover in task 4.** `docs/project-spec.md` says
+"the remaining on trials are the query trials". The earlier baseline run used the fixed 30-trial
+set (blocks 3–5) instead, which keeps R² comparable across k, draws, seeds and methods and keeps
+`pool ∩ query = ∅`. That file is archived as `task4/results/draws_fixed_query_legacy.json`.
+Task 4.1 now follows the spec literally: each draw scores the ON trials it did not use, so the
+query set shrinks with k (50 − k trials per session).
 
 **Normalisation never sees query trials.** Feature statistics are median / (1.4826·MAD) per
-channel and feature, computed from the calibration pool for held-out sessions and from the
-training blocks for training sessions. `EECS182_NHP_features.load_features` normalises on all
-included trials by default, so this code passes the calibration-pool rows through `trials` for
-held-out sessions and the training blocks for training sessions.
+channel and feature. Training sessions use their training blocks and the earlier baselines use
+the calibration pool. Task 4.1's leftover-query draws would overlap that pool, so `task4` normalises
+each draw on its own k trials through `U.drawn_trial_windows`. `EECS182_NHP_features.load_features`
+normalises on all included trials by default, so this code always passes an explicit
+normalisation set through `trials`.
 
 **EEGNet is fully convolutional.** A stock EEGNet averages over time, so it cannot
 emit one prediction per 50 ms window. Here the output rate is 20 Hz (pooling strides 2 and
@@ -83,6 +101,20 @@ With `padding='same'` the network sees 250 ms of future and beats the causal rid
 
 **Ridge alpha is tuned once per feature variant** on validation days, not by inner CV inside
 a k=2 calibration set (80 windows). All four ridge conditions share it.
+
+**KNN searches the raw window features.** There is no PCA (or any other projection) in front
+of the neighbour search: distances are Euclidean on the same 2,800-dimensional window ridge
+and MLP consume. Earlier versions projected to 48 principal components first; the projection
+only re-weighted dimensions that KNN's inverse-distance weighting already handles, and it
+cost a fitted transform that had to be re-fit per calibration draw.
+
+**The torch models are deliberately vanilla.** Weight matrices are updated with Muon
+(orthogonalised momentum, `MUON_LR`), biases and BatchNorm parameters with plain Adam, and
+both rates follow a cosine decay to `LR_FLOOR` of their initial value over a fixed epoch
+budget. There is no dropout, weight decay, gradient clipping, or early stopping. Early
+stopping was removed because a decay-to-zero schedule assumes the full budget runs; the
+validation R² trace is still logged per epoch (`results/training_logs/`) and the best epoch
+is reported in the training-curve figure.
 
 **Confidence intervals resample sessions.** `scripts/make_diagnostics.py` bootstraps per-session mean R² and
 recovery fractions, so each held-out session counts once.
@@ -99,5 +131,6 @@ recovery fractions, so each held-out session counts once.
   reported with its CI next to the raw R², never alone.
 - **`Butters-250711-101424` has no screen-cm kinematics** (July 11 has no touch data), so
   it contributes zero valid training windows.
-- **k=20 is the whole pool**, so all 10 draws at that k are the same set and averaging over
-  draws changes nothing. Five sessions also have a repeated k=2 draw in `splits.json`.
+- **In the earlier baseline draws, k=20 was the whole pool**, so all 10 draws at that k are the
+  same set and averaging over draws changed nothing; five sessions also had a repeated k=2 draw.
+  Task 4.1 samples from all 50 stimulation-ON trials instead, so its draws stay distinct at k=20.

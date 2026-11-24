@@ -14,6 +14,7 @@ import argparse
 import os
 import time
 
+import numpy as np
 import pandas as pd
 
 import task3_common as C
