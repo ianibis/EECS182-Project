@@ -269,3 +269,14 @@ Our results match **outcome 3 on slide 24: poor accuracy even without stimulatio
 - The stimulation signal on its own predicts nothing.
 
 Following slide 24, the project should make the **semi-synthetic results the main result**. On the real data there's very little accuracy to lose, and so very little for any recalibration method to win back.
+
+## GRU and MLP benchmarks
+
+The released evaluation uses 20 same-day stimulation-OFF calibration
+trials and 30 disjoint query trials. Task 4.1's matched ON-context draws
+are a separate protocol. See [Task 3](task3/task3_README.md) and
+[Task 4](task4/README.md) for commands and result paths.
+
+The five-seed GRU had mean OFF test R² 0.197518.
+The conventional OFF-trained MLP had mean OFF test R² 0.206771.
+Model checkpoints, neural recordings, and large feature caches remain in Box.

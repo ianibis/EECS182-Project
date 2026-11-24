@@ -1,6 +1,6 @@
-# EECS 182 final project data: NHP (Butters), 64-channel LFP under AM epidural stimulation
+# EECS 182/282A project data: Butters, 64-channel LFP under AM epidural stimulation
 
-This dataset contains motor cortex LFP recordings for decoding hand movement during epidural amplitude-modulated stimulation (eACS) and without stimulation. It covers 70 sessions from one rhesus macaque (Butters), recorded with a 64-channel array over 26 days (2025-05-20 to 2025-07-11). Each session includes LFP, stimulation signals, a trial table, and hand kinematics from DeepLabCut. Stimulation sessions also have a PARRM-cleaned copy of the LFP.
+Data for decoding hand movement from motor cortex LFP while epidural AM stimulation (eACS) is on or off. One rhesus macaque (Butters), one 64-channel array, 70 recording sessions on 26 days (2025-05-20 to 2025-07-11). Each session has the LFP, the stimulation signals, a trial table, hand kinematics from DeepLabCut, and (stimulation sessions) a PARRM-cleaned copy of the LFP.
 
 | Condition | Sessions | Rewarded trials used |
 |---|---|---|
@@ -9,11 +9,11 @@ This dataset contains motor cortex LFP recordings for decoding hand movement dur
 | 20 Hz AM (3.5 kHz carrier, 1.75 mA) | 26 | 1,300 (all stim on) |
 | Total | 70 | 3,500 |
 
-Every session has 50 rewarded trials, with 10 trials in each of five task blocks. During stimulation sessions, the stimulator is on for the task blocks and usually off for the ~30 s breaks. Two sessions have stimulation continuing through one break. All rewarded trials are therefore entirely ON in stimulation sessions and entirely OFF in no-stim sessions. The session counts, quality measures, and known problems are in `manifest.csv`.
+Every session has 50 rewarded trials (5 task blocks of 10). In stimulation sessions the stimulator is on during each task block and off during the ~30 s breaks between blocks, so every rewarded trial is entirely stim on (stim sessions) or entirely stim off (no-stim sessions). Two stim sessions had the stimulator left on through one break. `manifest.csv` has one row per session with counts, quality measures and known problems.
 
 ## Task
 
-The task is a sequence of five touchscreen targets. Butters holds a button until the go cue, then touches the targets in order for a juice reward. Two sequences were used: `1-9-4-3-7` (2025-05-20 to 2025-06-06 and 2025-07-07 to 2025-07-11; 36 sessions) and `3-7-6-1-9` (2025-06-09 to 2025-07-03; 34 sessions). The sequence for each recording is in `manifest.csv`. Target codes follow a phone keypad arrangement on a 3 × 3 grid. Positions are in screen cm:
+Sequential target task on a touchscreen. The monkey holds a button, a go cue appears, and he touches 5 targets in a fixed order, then gets juice. Two fixed target orders are used: `1-9-4-3-7` (2025-05-20 to 2025-06-06 and 2025-07-07 to 2025-07-11; 36 sessions) and `3-7-6-1-9` (2025-06-09 to 2025-07-03; 34 sessions). The `sequence` column gives it per session. Target codes follow a phone keypad on a 3 x 3 grid, in screen cm:
 
 | Code | x | y |
 |---|---|---|
@@ -24,14 +24,24 @@ The task is a sequence of five touchscreen targets. Butters holds a button until
 | 7 | -6.55 | -5.8 |
 | 9 | 6.55 | -5.8 |
 
+## GRU and MLP decoders
+
+The [Task 3 GRU guide](task3/task3_README.md) and
+[Task 4 MLP guide](task4/README.md) describe training, same-day OFF calibration,
+and evaluation. Set `TASK3_DATA_ROOT` to the Box project directory before
+running commands from this checkout. See the
+[file map](EECS182_file_map_261117.md) for external inputs and archived results.
+
 ## Files
+
+Under `EECS282_finalProject/`:
 
 | Path | Contents |
 |---|---|
 | `manifest.csv` | One row per session: condition, counts, timing, quality, known problems |
 | `conditions_eACS_AM-kHz_v2.csv` | All 102 candidate sessions with inclusion decisions, exclusion reasons and `qc_flag` |
 | `splits.json` | Train, validation and test days and sessions; held-out trials; calibration subsets (see Splits) |
-| `EECS182_NHP_data_loader.py` | Python loader (see Loader) |
+| `butters_loader_v2.py` | Python loader (see Loader) |
 | `session_summary.csv` | DeepLabCut export summary per session (confidence per keypoint, Start and Target positions, rest positions, reach endpoints) |
 | `export_outputs/<session>.h5` | Continuous LFP, stimulation signals, task samples and video frame times for one session |
 | `export_outputs/trials/<session>_trials.csv` | One row per trial |
@@ -45,17 +55,17 @@ The task is a sequence of five touchscreen targets. Butters holds a button until
 | `parrm_outputs/template_library.h5` | One group per stimulation session: mean stimulation-locked waveform per channel and its gains |
 | `parrm_outputs/parrm_summary.csv`, `figures/` | Per-session PARRM results and figures |
 | `features/<source>_<reference>/<session>.h5` | LMP and band power per channel and 50 ms bin (see Features); `export_none`, `parrm_none` and `export_car` computed |
-| `EECS182_NHP_features.py` | Computes and loads the features |
+| `butters_features_v1.py` | Computes and loads the features |
 
-The kinematics exports are under `kinematics_v3/`, in `bins50ms/`, `frames/`, and `reaches/`.
+Kinematics are in `kinematics_v3/` (`bins50ms/`, `frames/`, `reaches/`), currently on io's computer at `/Users/io/Documents/Documents/BME/PhD/Berkeley/Deep_Learning/5_Final_Project/TC_Videos/kinematics_v3`, not in the Box folder. Copy it next to the other folders to share it, and point the loader at it with `Paths(kin_dir=...)`.
 
 ## Clock
 
-Use the TDT recording clock for alignment. Times are in seconds from the start of the recording. The task program clock (`/task/t_file`) differs from TDT time by -72 to +49 s across sessions and should not be used to align the data.
+All times in every file are seconds on the TDT recording clock, with 0 at the start of the recording. The task program's own clock (`/task/t_file`) is offset from it by -72 to +49 s depending on the session; do not use it for alignment.
 
 ## HDF5 layout (`<session>.h5`)
 
-Shapes below are in h5py order. `N` is the number of LFP samples, at roughly 1,000 samples/s.
+Shapes are as h5py reads them. N is the number of LFP samples (about 1,000 per second).
 
 | Path | Shape, type | Contents |
 |---|---|---|
@@ -80,19 +90,19 @@ Shapes below are in h5py order. `N` is the number of LFP samples, at roughly 1,0
 | `/video/frame_t` | (F,) | Time (s) of each side-camera frame (50 fps, recorded in bursts during task blocks). Frame n of the video is element n. |
 | `/qc/f`, `/qc/psd_task`, `/qc/psd_rest`, `/qc/psd_ref_task`, `/qc/shape_r_task` | | Spectra used for the QC figures (rows are channels) |
 
-The three July 11 sessions have no `/task` group because the task files are missing. Their trial tables were reconstructed from TDT events.
+July 11 sessions have no `/task` group (their task files are missing); their trial tables were rebuilt from TDT events instead.
 
 Root attributes: `session`, `date`, `stim`, `am_freq_sheet_hz`, `am_freq_measured_hz` (from the StiF envelope), `mod_depth`, `envelope_valid`, `amplitude_ma`, `sequence`, `lfp_units`, `lfp_fs`, `lfp_fs_original`, `lfp_filter`, `clock`, `task_time_source`, `touch_lag_s`, `frame_time_source`, `layout`, `ref_block`, `created_by`, `created`.
 
 ## LFP processing
 
-The raw signal comes from the TDT `LFP4` store at 3,051.76 Hz. Each channel was filtered in the FFT domain with zero phase: a 0.1 Hz high-pass, notches at 60, 120, and 180 Hz (Q = 10), and a low-pass response flat through 250 Hz and tapered to zero at 300 Hz. The signal was then resampled in the FFT domain to about 1,000 Hz. The exact sampling rate is in `lfp_fs`; use `/t` for timing.
+From the TDT store `LFP4` (3,051.76 Hz), each channel was filtered in the FFT domain (zero phase): high-pass 0.1 Hz, notches at 60, 120 and 180 Hz (Q 10), low-pass flat to 250 Hz and tapering to zero at 300 Hz, then resampled in the FFT domain to about 1,000 Hz (the exact rate is in `lfp_fs`; use `/t` for times). The low-pass is lower than the planned 400 Hz on purpose: the 3.5 kHz carrier aliases to about 448 Hz at the recording rate, too close to 500 Hz for a 400 Hz cutoff to remove it.
 
-There is residual line noise around 55-65 and 115-125 Hz in many sessions, including recordings without stimulation. Avoid those ranges when choosing feature bands.
+Line noise leaks just outside the notches (about 55-65 and 115-125 Hz) in many sessions, with or without stimulation. Feature bands should avoid those ranges.
 
 ## Trial table (`trials/<session>_trials.csv`)
 
-The trial CSV includes rewarded and unrewarded trials. Use `include == 1` to select the rewarded ON or OFF trials.
+One row per trial, including unrewarded ones. Use rows with `include == 1`.
 
 | Column | Meaning |
 |---|---|
@@ -111,17 +121,17 @@ The trial CSV includes rewarded and unrewarded trials. Use `include == 1` to sel
 | `am_freq_hz`, `sequence` | Condition and target order |
 | `include`, `exclude_reason` | 1 for rewarded trials that are entirely ON or OFF |
 
-Go-to-reward time is 0.83-2.2 s across the 1st-99th percentiles.
+Go to reward takes 0.83-2.2 s (1st-99th percentile across sessions).
 
-The July 11 trial tables were reconstructed from intervals between task-program events, which change with task state. The reconstruction was checked against the 67 sessions with task files: 99.9% of reward times matched exactly, 99.5% of go times were within 80 ms (85% exact), and task block assignments matched throughout. Each July 11 session has 50 rewarded trials, 10 per block. `t_first_touch` and `t_acq1`-`t_acq4` are empty, `t_acq5` marks the final hold, and unrewarded trials have outcome `unrewarded`.
+**July 11 (3 sessions):** task files are missing, so trials were rebuilt from the timing of the task-program events, whose interval pattern changes with task state. Validated on the 67 sessions that have task files: 99.9% of rewards found at the exact time, 99.5% of go times within 80 ms (85% exact), task blocks always correct. July 11 has 50 rewarded trials, 10 per block, in all three sessions. `t_first_touch` and `t_acq1`-`t_acq4` are empty; `t_acq5` is the final hold; unrewarded trials are labelled `unrewarded`.
 
 ## Channels
 
-For consistent decoding across sessions, use `/channel_keep_fixed`. It selects the same 35 channels in all recordings:
+Use `/channel_keep_fixed`. It keeps the same 35 channels in every session:
 
 `21 22 26 27 28 29 30 31 32 33 34 35 36 37 38 41 42 43 44 45 47 48 49 51 52 53 54 55 57 58 59 60 61 62 64`
 
-The excluded channels are recorded in the HDF5 attributes:
+Excluded, recorded as attributes of the dataset:
 
 | Group | Channels | Reason |
 |---|---|---|
@@ -129,11 +139,11 @@ The excluded channels are recorded in the HDF5 attributes:
 | `excluded_degrading` | 16, 39, 46, 56 | Normal early, abnormally high power in later no-stim sessions (46 from June 9, 39 from June 17, 56 from July 7, 16 in several sessions and in every no-stim session from July 1) |
 | `excluded_stim_pickup` | 11, 23 | Healthy without stimulation, strong 20 Hz harmonic pickup in 7-8 of the 26 20 Hz sessions |
 
-The `/lfp` dataset still contains all 64 channels. You can use another mask, for example to test whether including the stimulation-pickup channels changes decoding.
+All 64 channels stay in `/lfp`, so a different set can be used (for example, adding the pickup channels back as a robustness test).
 
 ## PARRM (`parrm_outputs/`)
 
-`run_PARRM_LFP_v5.m` was applied to all 48 stimulation sessions, processing each stimulation segment separately with a ±6 s window for both AM frequencies. The AM period was estimated by fitting a straight line to the StiF envelope phase across segments. The fitted frequencies were 2.9971 and 19.8911 Hz.
+`run_PARRM_LFP_v5.m` removed the stimulation-locked component from each of the 48 stimulation sessions, separately within each stimulation segment, with a +/-6 s window at both AM frequencies. The AM period comes from a straight-line fit to the StiF envelope phase across segments (fitted frequencies 2.9971 and 19.8911 Hz).
 
 | Path | Shape | Contents |
 |---|---|---|
@@ -145,9 +155,9 @@ The `/lfp` dataset still contains all 64 channels. You can use another mask, for
 | `/sham/...` | | The same filter applied to a no-stim session within this session's stimulation timing: template, spectra, segments |
 | `/qc/...` | | Task spectra before and after cleaning and of the same-day reference |
 
-`template_library.h5` contains a template group for every stimulation session, along with `sham_mean`. Each group records the AM frequency, period, and `template_snr`.
+`template_library.h5` holds the template group of every session (plus `sham_mean`), with the AM frequency, period and `template_snr` as attributes.
 
-PARRM subtracts the component phase-locked to the AM signal. That includes the stimulation artifact and potentially neural activity entrained to the stimulus; the filter cannot distinguish between them. For comparison, the sham applies the same filter at the same period to no-stim data:
+**How to read it.** PARRM removes whatever is phase-locked to the AM, so the removed part is the stimulation-locked component: artifact plus any neural activity entrained to the AM. It cannot tell the two apart. The sham control runs the same filter on no-stim data at the same period:
 
 | | 3 Hz (22 sessions) | 20 Hz (26 sessions) |
 |---|---|---|
@@ -157,19 +167,18 @@ PARRM subtracts the component phase-locked to the AM signal. That includes the s
 | Same, sham | 1.041 | 1.009 |
 | Template signal-to-noise vs sham (median) | 1.9 | 5.7 |
 
-At 20 Hz, PARRM removes a median 17% of the power in the AM-frequency bin, while the sham shows almost no reduction. At 3 Hz, the reduction is about 5%, with about a 4% increase in broadband power. The sham has a similar broadband increase, suggesting that this effect comes from the filtering rather than stimulation. Session values are in the manifest under `parrm_*`.
+At 20 Hz PARRM removes a median 17% of the AM-frequency bin and the sham removes none, so the removed component is specific to stimulation. At 3 Hz it removes about 5% and adds about 4% broadband power; the sham shows the same increase, so that is a cost of the filter itself. Per session: `parrm_*` columns in the manifest.
 
-There are a few limitations to keep in mind:
-
-- No-stim sessions have no PARRM file. With `source='parrm'`, the loader uses their export LFP, so ON trials are filtered but OFF trials are not. At 3 Hz, this produces about a 4% broadband power mismatch, mostly removed by per-session normalization. The sham-cleaned LFP was not saved.
-- Templates for 250606-104043 (SNR 0.97), 250609-111203 (1.16), and 250529-102830 (1.46) are only slightly above sham and are poor candidates for semi-synthetic artifact generation.
-- Nine of the 48 shams use a no-stim recording from the nearest other day because the same-day no-stim session was excluded (`parrm_sham_same_day = 0`).
+**Limits:**
+- No-stim sessions have no PARRM file; with `source='parrm'` the loader returns their export LFP. ON data is filtered and OFF data is not, a mismatch of about 4% broadband power (3 Hz only, mostly removed by per-session normalization). The sham-cleaned LFP was not saved.
+- Templates in 250606-104043 (SNR 0.97), 250609-111203 (1.16) and 250529-102830 (1.46) are barely above their sham, so they are weak material for semi-synthetic artifacts.
+- 9 of the 48 shams come from the nearest other day, because the same-day no-stim session was excluded (`parrm_sham_same_day = 0`).
 
 ## Kinematics (`kinematics_v3/`)
 
-DeepLabCut (ResNet-50, shuffle 2, `snapshot_best-100`) tracked Start, Target, Wrist, Thumb, and Index in the side-camera video. The camera runs at 50 fps, with one TDT trigger per frame, so frame times are known on the TDT clock. Points below 0.6 confidence are set to NaN. Confident points are accurate to about 4 px. Index confidence is 81% at the median session, but falls to 49% in 250620-094859.
+DeepLabCut (ResNet-50, shuffle 2, `snapshot_best-100`) tracked Start, Target, Wrist, Thumb and Index in the side camera (50 fps, one TDT trigger per frame, so every frame has an exact TDT time). Points below 0.6 confidence are NaN. Confident points are accurate to about 4 px; about 80% of Index frames are confident (median 81%; 49% in 250620-094859).
 
-`bins50ms/<session>_bins50ms.csv` has one row per 50 ms bin, aligned to multiples of 0.05 s on the TDT clock. The loader uses this same grid. For each of `Wrist`, `Thumb`, and `Index`, the columns are:
+`bins50ms/<session>_bins50ms.csv` has one row per 50 ms bin on the TDT clock (edges at multiples of 0.05 s, the same grid the loader uses). Per keypoint (`Wrist`, `Thumb`, `Index`):
 
 | Columns | Meaning |
 |---|---|
@@ -179,37 +188,33 @@ DeepLabCut (ResNet-50, shuffle 2, `snapshot_best-100`) tracked Start, Target, Wr
 | `_n_valid` | Confident frames in the bin |
 | `_progress` | Projection on the Start-to-Target line (used by the loader's screen-plane mask; keep it) |
 
-Other columns are `n_frames`, `in_hold` (fraction of the bin with the button held), `reach_id`, and the reach endpoint (`end_t`, `Index_end_x`, `Index_end_y`, `Index_end_dist`). Image positions are relative to Start because the camera moved between days. The pixel-to-cm scale changed by about 4% in July.
+Also `n_frames`, `in_hold` (fraction of the bin holding the button), `reach_id`, and the reach endpoint (`end_t`, `Index_end_x`, `Index_end_y`, `Index_end_dist`). Positions are relative to Start because the camera moved between days; the px-to-cm scale changed by about 4% (July).
 
-The loader converts Index positions to screen cm (x right, y up, matching the target coordinates) using a separate affine fit for each session. It uses touchscreen contacts where the Index point is confident and moving slower than 300 px/s. To avoid fitting mostly to resting positions, the samples are balanced across the screen, with at most 15 points per 2 cm cell, followed by two rounds of outlier rejection.
-
-Across the 67 sessions with touch data, R² ranges from 0.885-0.967 for screen x and 0.925-0.977 for y. Median residuals are about 1.4 cm and 1.1 cm, and the scale is within 7% of the median for sessions with the same camera placement. Results are in `kinematics_calibration.csv` and the manifest's `kin_*` columns.
-
-The mapping applies only near the screen plane. The cm columns are NaN when Index progress is outside the range observed during contact; this leaves about 80-90% of bins in the trial windows checked. July 11 has no touch data, so those sessions have no cm values. Both screen axes can be estimated from the side view during contact, but target identity still comes from the task files.
+**Screen cm.** The loader converts Index to screen cm (x right, y up, the target axes) with an affine map fitted per session against the touchscreen: contact samples with a confident, slow (< 300 px/s) Index, balanced over the screen (at most 15 per 2 cm cell), two rounds of outlier rejection. Across the 67 sessions with touch data: R^2 0.885-0.967 for screen x and 0.925-0.977 for y, residual about 1.4 cm and 1.1 cm (median), and a scale within 7% of the median of sessions with the same camera placement (`kinematics_calibration.csv`, `kin_*` columns in the manifest). The map holds in the screen plane only, so cm values are NaN when the hand is off the screen (Index progress outside the range seen at contacts); in trial windows that kept about 80-90% of bins in the sessions checked. July 11 has no touch data, so its cm columns are empty. The fit shows that both screen axes are recoverable from the side view while the finger is on the screen. Target identity still comes from the task files.
 
 ## Known problems
 
-The manifest records session-specific issues in `qc_flag`, `known_problems`, and `sheet_notes`. The ones most relevant to decoding are:
+Per-session details are in `manifest.csv` (`qc_flag`, `known_problems`, `sheet_notes`). The main ones:
 
 - **250602-102701 and 250605-102648 (3 Hz):** power above ~25 Hz is 3-10x the same-day no-stim session in both stim-on trials and stim-off rest, equally on all channels. Kept for training, out of validation and test (`test_eligible = 0`).
 - **250603-142553 (no-stim):** during trials, power above ~40 Hz is 2-3x that of the same-day stim sessions, while its between-trial power is not elevated, consistent with the sheet note on grimacing/chewing. As the day's OFF reference it would bias ON-vs-OFF comparisons, so it has `qc_flag = emg_in_trials` and `test_eligible = 0`, which keeps the 250603 day in training.
-- **250530-105932:** a large artifact appears near the end of the recording, outside the trials. The trials themselves are clean. Use the first-to-last-trial window (`first_go_s` to `last_reward_s` in the manifest) for normalization, as with the other sessions.
+- **250530-105932:** very large artifact outside the trials near the end of the recording. Trials are clean. Compute any normalization from the first-to-last-trial window (`first_go_s` to `last_reward_s` in the manifest), which is good practice for every session.
 - **250616-102124 (20 Hz):** leftover peaks at 20, 40 and ~100 Hz during stim-on trials; PARRM removes 69% of the 20 Hz bin there.
-- **Between-session power:** broadband power varies substantially (`broadband_ratio` 0.43-3.68). Normalize features within each session.
+- **Day-to-day power differences:** broadband power varies between days and sessions (`broadband_ratio` 0.43-3.68), so normalize features within each session.
 - **3 Hz AM:** the stimulation-locked component at 3 Hz cannot be cleanly separated from possible neural entrainment by PARRM or SASS. The local motor potential (below 4 Hz) is the feature most exposed to it.
 - **250620-094859:** distracted subject (73 trials, 23 unrewarded) and low DeepLabCut confidence (Index 49% of frames).
 - **250710-101340 (no-stim):** LMP transients over 300 µV on channels 21, 27, 52, 54, 60 and 62 at about 221-222 s and 310 s. One overlaps included trial 44, which is kept.
 - **250711-103614 (3 Hz):** LMP transients up to 2 mV on channels 21 and 27 between task blocks (about 10, 62-78 and 188 s). None fall inside a trial window, and the robust normalization is not affected.
-- **Similar spectra across kept channels:** the 25-75th percentile spread is about 0.007 log10 units, suggesting a substantial common component. The loader can subtract a common-average reference (CAR). Compare both references when decoding.
+- **The kept channels have nearly identical spectra** (25-75th percentile spread across channels about 0.007 log10 units), which suggests a large component common to all channels. The loader's common-average reference option removes it; compare decoders with and without it.
 
 ## Splits (`splits.json`)
 
-The splits support a comparison of in-context adaptation, fine-tuning, LoRA, and PARRM + ridge. On held-out days, each method receives `k` ON calibration trials from a stimulation session and is evaluated on separate ON trials from that session. The OFF reference is the same-day no-stim session.
+The comparison the splits are built for: on held-out days, decoding accuracy on stimulation-ON trials of each held-out stim session after adapting with k ON trials from that session (in-context vs fine-tuning, LoRA and PARRM + ridge), relative to the OFF trials of the same-day no-stim session.
 
-- **Split by day:** all sessions from one day stay in the same partition. This prevents test and training sessions from sharing that day's electrode state and behavior. The OFF reference for each stimulation session is its same-day no-stim session (`off_reference`).
-- **Validation and test days:** each has a no-stim reference, at least one stimulation session, touch data, and no session with `test_eligible = 0`. July 11 can therefore appear only in training. The test split has 5 days, at least 5 sessions per AM frequency, no more than a 2-session difference between frequencies, and at least 2 days of each target sequence. Validation has 3 days, at least 2 sessions per AM frequency, and both target sequences. Days were sampled randomly from combinations satisfying these constraints; the seed is in `splits.json`.
-- **Training sessions:** hold out one task block (10 trials) per session using `train_val_trials`. The other 40 trials are available for fitting.
-- **Calibration and query trials:** in validation and test sessions, blocks 1-2 provide 20 calibration trials and blocks 3-5 provide 30 query trials. `calibration[session].subsets[k]` stores 10 random draws for `k = 2, 5, 10, 20`. The draws are nested (each 5-trial draw contains its 2-trial draw); `k = 20` uses the full pool. Calibration trials precede query trials in time.
+- **The unit is a day.** All sessions of a day go to the same split, so a test session never shares a day (electrode state, behavior) with training data. Because every trial in a stim session is ON, the OFF reference for a stim session is the same-day no-stim session (`off_reference`).
+- **Test and validation days** must have a same-day no-stim session, at least one stim session, no session with `test_eligible = 0`, and touch data (so July 11 is training only). Test: 5 days with at least 5 sessions of each AM frequency, at most 2 sessions difference between them, and at least 2 days of each target sequence. Validation: 3 days with at least 2 sessions of each AM frequency and both sequences. Days were drawn at random (seed in the file) from all combinations meeting these rules.
+- **Training sessions:** one task block per session (10 trials) is held out for validation (`train_val_trials`); use the other 40 for fitting.
+- **Validation and test sessions:** blocks 1-2 are the calibration pool (20 trials), blocks 3-5 the query trials (30). `calibration[session].subsets[k]` holds 10 random draws of k = 2, 5, 10 and 20 calibration trials, nested within each draw (the k = 5 draw contains the k = 2 draw). k = 20 always uses the whole pool. Calibration comes before the queries in time, as it would in use.
 
 | Split | Days | No-stim | 3 Hz | 20 Hz |
 |---|---|---|---|---|
@@ -217,14 +222,14 @@ The splits support a comparison of in-context adaptation, fine-tuning, LoRA, and
 | Validation | 3 | 3 | 2 | 4 |
 | Test | 5 | 5 | 7 | 7 |
 
-`make_splits_v1.py` regenerates the splits and checks that no day or session appears in more than one partition.
+Regenerate with `make_splits_v1.py`; it asserts that no session or day is in two splits.
 
-## Loader (`EECS182_NHP_data_loader.py`)
+## Loader (`butters_loader_v2.py`)
 
-Dependencies: numpy, pandas, h5py, and matplotlib.
+Needs numpy, pandas, h5py and matplotlib.
 
 ```python
-import EECS182_NHP_data_loader as L
+import butters_loader_v2 as L
 
 P = L.Paths(root='.../EECS282_finalProject', kin_dir='.../kinematics_v3/bins50ms')
 M, S = L.load_manifest(P), L.load_splits(P)
@@ -245,18 +250,18 @@ L.calibrate_all(P)                                      # refit the cm calibrati
 L.plot_all_on_off_spectra(P, overwrite=True)            # one figure per session into onoff_spectra/
 ```
 
-- **Decoding target:** the default is Index velocity in screen cm/s (`kin_cols=('Index_vx_cm', 'Index_vy_cm')`), consistent with common LFP hand-velocity decoding. For pixel velocity, including July 11, use `('Index_vx', 'Index_vy')`. Exclude bins with `kin_valid = False` from the loss and metric.
-- **`source`:** `'export'` (default) or `'parrm'`. The latter uses cleaned LFP and fitted AM phase for stimulation sessions; no-stim sessions use the original export.
-- **`reference`:** `'none'` keeps the recording reference (default); `'car'` subtracts the common average of the selected channels after PARRM cleaning. CAR has been reported to help LMP decoding slightly, but it may also remove the spatially common 3 Hz stimulation-locked component. Keep the reference consistent across methods.
-- **LMP:** a causal 256 ms moving average of the LFP, sampled at each bin end, following Flint et al. (2012) and later decoding work. Run `normalize()` first because it clears the cached LMP.
-- **Bins:** all signals use the same TDT grid. Bin `j` covers `[0.05*j, 0.05*(j+1))` seconds. A fixed window has `round((pre + post) / 0.05)` bins; `until='t_reward'` instead ends the window at reward plus `post`.
-- **Spectra:** each figure shows median channel power during trials (go - 0.5 s through reward + 0.5 s). The current session has a thick line; other sessions from the same day are dashed (black OFF, red 3 Hz, blue 20 Hz). The grey line is between-trial, stimulation-off power from the current session. Welch PSD uses 1 s Hann windows with 50% overlap, restricted to complete windows within each period.
+- **Default decoding target: Index velocity in screen cm/s** (`kin_cols=('Index_vx_cm', 'Index_vy_cm')`), the field's usual target (hand velocity; position second). Use `('Index_vx', 'Index_vy')` for px/s, which also covers July 11. Bins where a target is undefined have `kin_valid = False`; mask them in the loss and the metric.
+- **`source`:** `'export'` (default) or `'parrm'`. With `'parrm'`, stimulation sessions use the cleaned LFP and PARRM's fitted AM phase, and no-stim sessions fall back to the export.
+- **`reference`:** `'none'` (recording reference, default) or `'car'` (common average of the selected channels, after PARRM cleaning). In the one direct comparison of referencing schemes for LFP decoding of hand kinematics, CAR helped the LMP feature slightly. Because the 3 Hz stimulation-locked component is mostly common to all channels, CAR also removes part of it, so apply the same reference to every method being compared.
+- **LMP:** causal 256 ms moving average of the LFP (as in Flint et al. 2012 and later LFP decoding work), sampled at each bin end. `normalize()` clears it, so normalize first.
+- **Bins** are on one global grid: bin j covers [0.05 j, 0.05 (j + 1)) s on the TDT clock, the same grid as the kinematics. Fixed windows have `round((pre + post) / 0.05)` bins; `until='t_reward'` gives variable-length windows ending at reward plus `post`.
+- **Spectrum figures:** for each session, the median over channels of the trial spectrum (go - 0.5 s to reward + 0.5 s) for that session (thick) and for the other sessions that day (dashed: black OFF, red 3 Hz, blue 20 Hz), plus the session's between-trial, stim-off spectrum (grey). Each curve is the Welch average (1 s Hann windows, 50% overlap) over all whole windows inside the masked periods.
 
-## Features (`features/`, `EECS182_NHP_features.py`)
+## Features (`features/`, `butters_features_v1.py`)
 
-Features are saved once per session and preprocessing variant, named `<source>_<reference>` as in the loader. `export_none` (default), `parrm_none`, and `export_car` are computed for all 70 sessions. The script can also generate `parrm_car`. In no-stim sessions, `parrm_none` is the same as `export_none` (attribute `source = 'export'`).
+One file per session and variant. The variant is `<source>_<reference>` with the loader's meanings: `export_none` (default), `parrm_none` and `export_car` are computed for all 70 sessions; `parrm_car` can be added with the same script. For no-stim sessions `parrm_none` equals `export_none` (attribute `source = 'export'`).
 
-Features are computed for each kept channel at 50 ms intervals, using only samples available by the end of each bin:
+For each kept channel and each 50 ms bin of the global grid, using only samples up to the end of the bin:
 
 | Feature | Definition | Window |
 |---|---|---|
@@ -265,12 +270,12 @@ Features are computed for each kept channel at 50 ms intervals, using only sampl
 | `pow_4_8`, `pow_8_13` | same, 4-8 and 8-13 Hz | 0.5 s |
 | `pow_13_30`, `pow_30_50`, `pow_70_110`, `pow_130_200` | same | 0.256 s |
 
-Frequency bands follow Flint et al. (2012) and later LFP decoding work, with finer divisions at low frequencies. We omit 50-70, 110-130, and 170-190 Hz because of residual line noise. Feature values are NaN if the analysis window begins before the recording (roughly the first second).
+The bands follow Flint et al. (2012) and later LFP decoding work, split finer at low frequencies. 50-70, 110-130 and 170-190 Hz are left out because of the line-noise shoulders. Bins whose window starts before the recording are NaN (about the first second).
 
-Each feature HDF5 file has `bin_id` (B), `t_bin` (B, start time in seconds), `lmp` (C, B), `logpow` (C, 7, B), `channel_ids` (C), and attributes describing the bands, windows, source, reference, and feature definitions.
+HDF5 layout: `bin_id` (B), `t_bin` (B, bin start in s), `lmp` (C, B), `logpow` (C, 7, B), `channel_ids` (C), and attributes for the bands, windows, source, reference and definition.
 
 ```python
-import EECS182_NHP_features as F
+import butters_features_v1 as F
 f = F.load_features('Butters-250606-104043', P, variant='export_none')   # X: (bins, 35, 8), robust z per channel and feature
 rows = lambda part: s.trials[s.trials.trial.isin(L.split_trials(S, s, part))]
 f = F.load_features(s.name, P, normalize='pool', trials=rows('pool'))   # statistics from the calibration pool only
@@ -278,7 +283,25 @@ X, Y, valid, bins = F.trial_arrays(f, rows('query'), kin=K, align='t_go', pre=0.
 # X: (trials, 40, 10 * 35 * 8) with 9 causal lags as in Wiener/ridge decoders; Y: (trials, 40, 2) Index vx, vy in cm/s
 ```
 
-- **Normalization:** median and 1.4826 × MAD per channel and feature, estimated from the first-go to last-reward interval (± 1 s). For held-out sessions, `normalize='pool'` computes statistics only from the calibration pool, not the query trials.
-- **`valid`:** False wherever a feature or target is NaN. Mask these bins in both the loss and the metric.
-- **Recording reference vs CAR:** this choice is still open. The recording reference is the default, with CAR as an ablation. Ahmadi et al. (2021) reported the best LMP decoding with CAR in macaque M1, while Young et al. (2018) found linear regression reference better for stimulation artifacts. Shirhatti et al. (2016) also showed that referencing changes PSD slopes and phase. Because the kept channels share much of their signal, CAR could remove movement information here. The first baseline compares `export_none` and `export_car` on validation days; the result will replace this note.
-- **Compute:** run `python EECS182_NHP_features.py --variants export_none parrm_none`. Each variant takes about 6.5 s per session. Existing files are skipped unless `--overwrite` is supplied.
+- **Normalization:** median and 1.4826 x MAD per channel and feature over the first-go to last-reward window (± 1 s). For held-out sessions, `normalize='pool'` keeps the query trials out of the statistics.
+- **`valid`** is False where any feature or target is NaN; mask those bins in the loss and the metric.
+- **Reference (recording vs CAR):** not settled yet. The recording reference is the default and CAR an ablation. In the closest published comparison (Ahmadi et al. 2021, Utah array in macaque M1, hand kinematics), CAR gave the best decoding with the LMP feature; for stimulation artifacts, linear regression reference outperformed CAR (Young et al. 2018); and the reference changes PSD slopes and phase (Shirhatti et al. 2016). Because the kept channels share most of their signal, CAR may remove movement information here. The first baseline decoder (section 3) compares `export_none` and `export_car` on validation days, and its result will replace this note.
+- **Compute:** `python butters_features_v1.py --variants export_none parrm_none` (about 6.5 s per session per variant; skips existing files unless `--overwrite`).
+
+## Provenance
+
+| Step | Script |
+|---|---|
+| Session list and inclusion | `conditions_eACS_AM-kHz_v2.csv` (from the lab sheet, task files and video checks) |
+| Export | `export_session_v2.m` |
+| Fixed channel set | `patch_channel_keep_v1.m` |
+| QC collection | `collect_qc_v1.m` |
+| July 11 trials | `dump_task_timing_v1.m`, then `reconstruct_trials_tdt_v2.py` |
+| Splits | `make_splits_v1.py` |
+| PARRM | `run_PARRM_LFP_v5.m` |
+| Kinematics | DeepLabCut, then `export_kinematics_v3.py` |
+| Screen-cm calibration | `butters_loader_v2.calibrate_all()` |
+| Features | `butters_features_v1.py` |
+| Session manifest | built from `export_summary.csv`, `conditions_eACS_AM-kHz_v2.csv`, the trial tables, `parrm_summary.csv`, `session_summary.csv` and `kinematics_calibration.csv` |
+
+Excluded from the 102 candidate sessions (reasons in `conditions_eACS_AM-kHz_v2.csv`): random target order (21), video frame count mismatch or no video (8), a stimulation waveform different from the others (1), days whose stimulation had no AM (2).
