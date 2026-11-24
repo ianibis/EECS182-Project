@@ -1,0 +1,27 @@
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+      input      comparison  n_sessions  r2_first  r2_second  difference  ci_low  ci_high  day_ci_low  day_ci_high  sessions_positive  holds
+0     amp10  own - other_on           6    0.1767     0.1391      0.0376 -0.0193   0.0862      0.0052       0.0866                  4  False
+1     amp10  other_on - off           6    0.1391     0.0789      0.0602 -0.0003   0.1342     -0.0011       0.1624                  4  False
+2     amp10       own - off           6    0.1767     0.0789      0.0978  0.0568   0.1416      0.0403       0.1676                  6   True
+3  recorded  own - other_on           6    0.2098     0.1817      0.0281 -0.0277   0.0753      0.0050       0.0642                  4  False
+4  recorded  other_on - off           6    0.1817     0.1208      0.0609  0.0084   0.1307      0.0100       0.1566                  5   True
+5  recorded       own - off           6    0.2098     0.1208      0.0890  0.0454   0.1374      0.0310       0.1616                  6   True
+context                           off  other_on    own
+input    session                                      
+amp10    Butters-250523-100308 -0.041     0.184  0.106
+         Butters-250523-102722 -0.026     0.074  0.163
+         Butters-250606-103321  0.089     0.071  0.136
+         Butters-250606-104043  0.045     0.101  0.078
+         Butters-250624-101719  0.171     0.194  0.260
+         Butters-250624-102423  0.235     0.210  0.318
+recorded Butters-250523-100308 -0.002     0.224  0.128
+         Butters-250523-102722  0.004     0.092  0.197
+         Butters-250606-103321  0.082     0.091  0.130
+         Butters-250606-104043  0.126     0.148  0.140
+         Butters-250624-101719  0.188     0.220  0.274
+         Butters-250624-102423  0.327     0.315  0.389
+DONE

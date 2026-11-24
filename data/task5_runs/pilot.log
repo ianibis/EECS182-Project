@@ -1,0 +1,7 @@
+[pilot] 822,546 parameters, 1500 iterations
+[pilot] step   250  train 0.9775  holdout 0.9486  val R2 +0.0569  neural gain -0.0254  0.6 min *
+[pilot] step   500  train 0.9419  holdout 0.9101  val R2 +0.0704  neural gain -0.0118  1.2 min *
+[pilot] step   750  train 0.9368  holdout 0.9178  val R2 +0.0725  neural gain -0.0097  1.8 min *
+[pilot] step  1000  train 0.9115  holdout 0.9066  val R2 +0.0772  neural gain -0.0050  2.3 min *
+[pilot] step  1250  train 0.9098  holdout 0.9465  val R2 +0.0834  neural gain +0.0012  2.9 min *
+[pilot] step  1500  train 0.9060  holdout 0.8777  val R2 +0.0867  neural gain +0.0045  3.5 min *

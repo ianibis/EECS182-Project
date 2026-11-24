@@ -1,0 +1,16 @@
+{
+  "step1": {
+    "name": "jitter",
+    "small": false,
+    "strong_dropout": false,
+    "jitter_bins": 2,
+    "timing": "none"
+  },
+  "step2": {
+    "name": "jitter",
+    "small": false,
+    "strong_dropout": false,
+    "jitter_bins": 2,
+    "timing": "none"
+  }
+}
