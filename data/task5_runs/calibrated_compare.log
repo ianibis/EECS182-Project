@@ -1,0 +1,25 @@
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+                                            0         1         2         3       4       5       6       7
+input                                recorded  recorded  recorded  recorded   amp10   amp10   amp10   amp10
+k                                           2         5        10        20       2       5      10      20
+n_sessions                                  6         6         6         6       6       6       6       6
+r2_calibrated                           0.132     0.176     0.195    0.2098  0.1063  0.1395  0.1606  0.1767
+r2_first_model                         0.1452     0.156    0.1534    0.1616  0.1143  0.1229  0.1199  0.1256
+r2_labels_only                         0.0576    0.0856    0.0935    0.1122  0.0576  0.0856  0.0935  0.1122
+minus_first_model                     -0.0132      0.02    0.0417    0.0482 -0.0079  0.0166  0.0407  0.0511
+minus_first_model_ci_low              -0.0506   -0.0262   -0.0141   -0.0111  -0.054  -0.036 -0.0178 -0.0087
+minus_first_model_ci_high               0.027    0.0866    0.1243    0.1318  0.0449  0.0924  0.1256  0.1404
+minus_first_model_day_ci_low          -0.0638   -0.0274   -0.0176   -0.0157 -0.0679 -0.0326 -0.0233  -0.021
+minus_first_model_day_ci_high          0.0484    0.1064    0.1412    0.1386   0.064  0.1129  0.1485  0.1528
+minus_first_model_sessions_positive         2         2         3         5       2       2       3       4
+minus_labels_only                      0.0744    0.0904    0.1015    0.0976  0.0487  0.0539  0.0671  0.0645
+minus_labels_only_ci_low               0.0356    0.0468    0.0631    0.0625  0.0135  0.0077  0.0273  0.0321
+minus_labels_only_ci_high               0.122    0.1362    0.1397    0.1299  0.0947  0.1002  0.1104  0.1007
+minus_labels_only_day_ci_low           0.0274    0.0264    0.0419    0.0468  0.0097 -0.0112  0.0119  0.0191
+minus_labels_only_day_ci_high          0.1374    0.1569    0.1562    0.1393  0.1023  0.1089  0.1105  0.0963
+minus_labels_only_sessions_positive         6         6         6         6       5       5       5       6
+DONE

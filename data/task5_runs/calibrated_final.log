@@ -1,0 +1,54 @@
+calibrated_a0_seed1: already finished
+[calibrated_a0_seed2] 823,042 parameters, 6000 iterations
+[calibrated_a0_seed2] step   500  train 0.9133  holdout 0.8734  val R2 +0.1197  vs labels-only +0.0374  context gain +0.1121  1.0 min *
+[calibrated_a0_seed2] step  1000  train 0.8524  holdout 0.8879  val R2 +0.1285  vs labels-only +0.0463  context gain +0.0899  2.1 min *
+[calibrated_a0_seed2] step  1500  train 0.7948  holdout 0.8273  val R2 +0.1583  vs labels-only +0.0760  context gain +0.0977  3.1 min *
+[calibrated_a0_seed2] step  2000  train 0.7552  holdout 0.8158  val R2 +0.1440  vs labels-only +0.0618  context gain +0.0979  4.1 min
+[calibrated_a0_seed2] step  2500  train 0.7090  holdout 0.7961  val R2 +0.1455  vs labels-only +0.0633  context gain +0.0927  5.2 min
+[calibrated_a0_seed2] step  3000  train 0.6794  holdout 0.8218  val R2 +0.1311  vs labels-only +0.0489  context gain +0.0932  6.3 min
+[calibrated_a0_seed2] step  3500  train 0.6543  holdout 0.7586  val R2 +0.1286  vs labels-only +0.0463  context gain +0.0975  7.3 min
+[calibrated_a0_seed2] step  4000  train 0.6334  holdout 0.8269  val R2 +0.1249  vs labels-only +0.0426  context gain +0.1009  8.4 min
+[calibrated_a0_seed2] step  4500  train 0.6149  holdout 0.8539  val R2 +0.1308  vs labels-only +0.0486  context gain +0.0969  9.5 min
+[calibrated_a0_seed2] step  5000  train 0.6082  holdout 0.8288  val R2 +0.1305  vs labels-only +0.0483  context gain +0.0996  10.5 min
+[calibrated_a0_seed2] step  5500  train 0.5912  holdout 0.7941  val R2 +0.1298  vs labels-only +0.0475  context gain +0.0982  11.6 min
+[calibrated_a0_seed2] step  6000  train 0.6002  holdout 0.7307  val R2 +0.1299  vs labels-only +0.0477  context gain +0.0986  12.6 min
+[calibrated_a0_seed3] 823,042 parameters, 6000 iterations
+[calibrated_a0_seed3] step   500  train 0.9060  holdout 0.8623  val R2 +0.1140  vs labels-only +0.0318  context gain +0.1043  1.0 min *
+[calibrated_a0_seed3] step  1000  train 0.8372  holdout 0.7958  val R2 +0.1333  vs labels-only +0.0510  context gain +0.0906  2.1 min *
+[calibrated_a0_seed3] step  1500  train 0.7980  holdout 0.8304  val R2 +0.1546  vs labels-only +0.0724  context gain +0.1016  3.1 min *
+[calibrated_a0_seed3] step  2000  train 0.7580  holdout 0.8718  val R2 +0.1389  vs labels-only +0.0567  context gain +0.1023  4.2 min
+[calibrated_a0_seed3] step  2500  train 0.7179  holdout 0.7836  val R2 +0.1398  vs labels-only +0.0575  context gain +0.0908  5.2 min
+[calibrated_a0_seed3] step  3000  train 0.6845  holdout 0.8050  val R2 +0.1402  vs labels-only +0.0580  context gain +0.0828  6.2 min
+[calibrated_a0_seed3] step  3500  train 0.6565  holdout 0.8360  val R2 +0.1333  vs labels-only +0.0510  context gain +0.1061  7.2 min
+[calibrated_a0_seed3] step  4000  train 0.6310  holdout 0.7872  val R2 +0.1325  vs labels-only +0.0502  context gain +0.1015  8.3 min
+[calibrated_a0_seed3] step  4500  train 0.6085  holdout 0.7526  val R2 +0.1319  vs labels-only +0.0497  context gain +0.0987  9.3 min
+[calibrated_a0_seed3] step  5000  train 0.5968  holdout 0.8564  val R2 +0.1270  vs labels-only +0.0448  context gain +0.1009  10.3 min
+[calibrated_a0_seed3] step  5500  train 0.5827  holdout 0.7873  val R2 +0.1298  vs labels-only +0.0475  context gain +0.1002  11.4 min
+[calibrated_a0_seed3] step  6000  train 0.5838  holdout 0.8189  val R2 +0.1291  vs labels-only +0.0469  context gain +0.0995  12.4 min
+[calibrated_a0_seed4] 823,042 parameters, 6000 iterations
+[calibrated_a0_seed4] step   500  train 0.9085  holdout 0.8388  val R2 +0.1138  vs labels-only +0.0315  context gain +0.0944  1.0 min *
+[calibrated_a0_seed4] step  1000  train 0.8425  holdout 0.8738  val R2 +0.1376  vs labels-only +0.0553  context gain +0.0876  2.1 min *
+[calibrated_a0_seed4] step  1500  train 0.7979  holdout 0.8068  val R2 +0.1509  vs labels-only +0.0687  context gain +0.1023  3.1 min *
+[calibrated_a0_seed4] step  2000  train 0.7618  holdout 0.8707  val R2 +0.1571  vs labels-only +0.0749  context gain +0.1116  4.1 min *
+[calibrated_a0_seed4] step  2500  train 0.7280  holdout 0.8163  val R2 +0.1353  vs labels-only +0.0531  context gain +0.1008  5.2 min
+[calibrated_a0_seed4] step  3000  train 0.6921  holdout 0.7835  val R2 +0.1494  vs labels-only +0.0671  context gain +0.1098  6.2 min
+[calibrated_a0_seed4] step  3500  train 0.6614  holdout 0.7374  val R2 +0.1379  vs labels-only +0.0557  context gain +0.1251  7.2 min
+[calibrated_a0_seed4] step  4000  train 0.6444  holdout 0.8304  val R2 +0.1389  vs labels-only +0.0567  context gain +0.1127  8.3 min
+[calibrated_a0_seed4] step  4500  train 0.6273  holdout 0.8216  val R2 +0.1356  vs labels-only +0.0534  context gain +0.1241  9.3 min
+[calibrated_a0_seed4] step  5000  train 0.6187  holdout 0.8535  val R2 +0.1343  vs labels-only +0.0521  context gain +0.1188  10.4 min
+[calibrated_a0_seed4] step  5500  train 0.6147  holdout 0.8467  val R2 +0.1341  vs labels-only +0.0518  context gain +0.1226  11.4 min
+[calibrated_a0_seed4] step  6000  train 0.6058  holdout 0.8603  val R2 +0.1346  vs labels-only +0.0523  context gain +0.1224  12.5 min
+[calibrated_a0_seed5] 823,042 parameters, 6000 iterations
+[calibrated_a0_seed5] step   500  train 0.9082  holdout 0.8729  val R2 +0.1192  vs labels-only +0.0370  context gain +0.0907  1.0 min *
+[calibrated_a0_seed5] step  1000  train 0.8279  holdout 0.8677  val R2 +0.1326  vs labels-only +0.0504  context gain +0.0991  2.1 min *
+[calibrated_a0_seed5] step  1500  train 0.7911  holdout 0.8006  val R2 +0.1387  vs labels-only +0.0565  context gain +0.1067  3.2 min *
+[calibrated_a0_seed5] step  2000  train 0.7501  holdout 0.9046  val R2 +0.1412  vs labels-only +0.0590  context gain +0.0924  4.3 min *
+[calibrated_a0_seed5] step  2500  train 0.7080  holdout 0.7237  val R2 +0.1512  vs labels-only +0.0690  context gain +0.0984  5.3 min *
+[calibrated_a0_seed5] step  3000  train 0.6779  holdout 0.7304  val R2 +0.1336  vs labels-only +0.0514  context gain +0.1082  6.4 min
+[calibrated_a0_seed5] step  3500  train 0.6527  holdout 0.7798  val R2 +0.1343  vs labels-only +0.0521  context gain +0.1039  7.4 min
+[calibrated_a0_seed5] step  4000  train 0.6180  holdout 0.6845  val R2 +0.1269  vs labels-only +0.0447  context gain +0.0919  8.5 min
+[calibrated_a0_seed5] step  4500  train 0.6051  holdout 0.7804  val R2 +0.1294  vs labels-only +0.0472  context gain +0.0985  9.5 min
+[calibrated_a0_seed5] step  5000  train 0.5971  holdout 0.7833  val R2 +0.1300  vs labels-only +0.0477  context gain +0.1009  10.6 min
+[calibrated_a0_seed5] step  5500  train 0.5927  holdout 0.8270  val R2 +0.1305  vs labels-only +0.0483  context gain +0.0962  11.6 min
+[calibrated_a0_seed5] step  6000  train 0.5897  holdout 0.7971  val R2 +0.1304  vs labels-only +0.0481  context gain +0.0970  12.7 min
+ALL CALIBRATED SEEDS DONE

@@ -388,5 +388,6 @@ python task5/task5_diversity.py --score val --analyze val
 python task5/task5_diversity.py --score test --analyze test
 ```
 
-Result tables and figures are in `task5_results/`. Checkpoints are in `data/task5_runs/` and the first model's
-per-trial predictions are in `data/task5_predictions/` (with a README); neither is tracked by git. `task5_results/frozen_before_test.sha256` records the code, settings and checkpoints used for the test run.
+Result tables and figures are in `task5_results/`. All checkpoints are in `data/task5_runs/` and the first model's
+per-trial predictions are in `data/task5_predictions/`; both are committed, each with a README. The trial cache
+(`data/task5_cache/`, 1.9 GB) is not committed; `python task5/task5_data.py` rebuilds it from the shared data. `task5_results/frozen_before_test.sha256` records the code, settings and checkpoints used for the test run.

@@ -1,0 +1,72 @@
+[sweep_lr0.0001_warmup300] 822,546 parameters, 3000 iterations
+[sweep_lr0.0001_warmup300] step   250  train 0.9955  holdout 0.9399  val R2 +0.0564  vs labels-only -0.0258  context gain (k20-k0) -0.0010  0.6 min *
+[sweep_lr0.0001_warmup300] step   500  train 0.9339  holdout 0.9464  val R2 +0.0571  vs labels-only -0.0252  context gain (k20-k0) -0.0029  1.2 min *
+[sweep_lr0.0001_warmup300] step   750  train 0.9410  holdout 0.9560  val R2 +0.0610  vs labels-only -0.0212  context gain (k20-k0) -0.0038  1.8 min *
+[sweep_lr0.0001_warmup300] step  1000  train 0.9330  holdout 0.9201  val R2 +0.0673  vs labels-only -0.0150  context gain (k20-k0) +0.0012  2.4 min *
+[sweep_lr0.0001_warmup300] step  1250  train 0.9220  holdout 0.9025  val R2 +0.0677  vs labels-only -0.0145  context gain (k20-k0) +0.0009  3.0 min *
+[sweep_lr0.0001_warmup300] step  1500  train 0.9354  holdout 0.8968  val R2 +0.0733  vs labels-only -0.0089  context gain (k20-k0) -0.0018  3.6 min *
+[sweep_lr0.0001_warmup300] step  1750  train 0.9192  holdout 0.9015  val R2 +0.0649  vs labels-only -0.0173  context gain (k20-k0) -0.0058  4.2 min
+[sweep_lr0.0001_warmup300] step  2000  train 0.9254  holdout 0.9380  val R2 +0.0798  vs labels-only -0.0025  context gain (k20-k0) -0.0019  4.8 min *
+[sweep_lr0.0001_warmup300] step  2250  train 0.9202  holdout 0.8779  val R2 +0.0814  vs labels-only -0.0008  context gain (k20-k0) -0.0016  5.4 min *
+[sweep_lr0.0001_warmup300] step  2500  train 0.9156  holdout 0.9416  val R2 +0.0819  vs labels-only -0.0003  context gain (k20-k0) -0.0006  6.0 min *
+[sweep_lr0.0001_warmup300] step  2750  train 0.9188  holdout 0.9225  val R2 +0.0810  vs labels-only -0.0012  context gain (k20-k0) -0.0013  6.6 min
+[sweep_lr0.0001_warmup300] step  3000  train 0.9169  holdout 0.8720  val R2 +0.0808  vs labels-only -0.0014  context gain (k20-k0) -0.0014  7.2 min
+[sweep_lr0.0003_warmup300] 822,546 parameters, 3000 iterations
+[sweep_lr0.0003_warmup300] step   250  train 0.9762  holdout 0.9391  val R2 +0.0549  vs labels-only -0.0274  context gain (k20-k0) +0.1380  0.6 min *
+[sweep_lr0.0003_warmup300] step   500  train 0.9312  holdout 0.9415  val R2 +0.0655  vs labels-only -0.0168  context gain (k20-k0) +0.0032  1.1 min *
+[sweep_lr0.0003_warmup300] step   750  train 0.9357  holdout 0.9506  val R2 +0.0652  vs labels-only -0.0170  context gain (k20-k0) +0.0037  1.7 min
+[sweep_lr0.0003_warmup300] step  1000  train 0.9235  holdout 0.9069  val R2 +0.0788  vs labels-only -0.0035  context gain (k20-k0) +0.0029  2.3 min *
+[sweep_lr0.0003_warmup300] step  1250  train 0.9077  holdout 0.8823  val R2 +0.0900  vs labels-only +0.0078  context gain (k20-k0) -0.0006  2.9 min *
+[sweep_lr0.0003_warmup300] step  1500  train 0.9124  holdout 0.8474  val R2 +0.0969  vs labels-only +0.0146  context gain (k20-k0) +0.0160  3.4 min *
+[sweep_lr0.0003_warmup300] step  1750  train 0.8690  holdout 0.8429  val R2 +0.0995  vs labels-only +0.0173  context gain (k20-k0) +0.0166  4.0 min *
+[sweep_lr0.0003_warmup300] step  2000  train 0.8665  holdout 0.8660  val R2 +0.1067  vs labels-only +0.0245  context gain (k20-k0) +0.0111  4.6 min *
+[sweep_lr0.0003_warmup300] step  2250  train 0.8593  holdout 0.8082  val R2 +0.1221  vs labels-only +0.0399  context gain (k20-k0) +0.0258  5.1 min *
+[sweep_lr0.0003_warmup300] step  2500  train 0.8399  holdout 0.8719  val R2 +0.1248  vs labels-only +0.0425  context gain (k20-k0) +0.0308  5.7 min *
+[sweep_lr0.0003_warmup300] step  2750  train 0.8443  holdout 0.8108  val R2 +0.1256  vs labels-only +0.0434  context gain (k20-k0) +0.0313  6.3 min *
+[sweep_lr0.0003_warmup300] step  3000  train 0.8390  holdout 0.8027  val R2 +0.1247  vs labels-only +0.0425  context gain (k20-k0) +0.0308  6.9 min
+[sweep_lr0.001_warmup300] 822,546 parameters, 3000 iterations
+[sweep_lr0.001_warmup300] step   250  train 0.9730  holdout 0.9409  val R2 +0.0512  vs labels-only -0.0311  context gain (k20-k0) +0.0232  0.6 min *
+[sweep_lr0.001_warmup300] step   500  train 0.9278  holdout 0.9392  val R2 +0.0566  vs labels-only -0.0256  context gain (k20-k0) -0.0010  1.1 min *
+[sweep_lr0.001_warmup300] step   750  train 0.9277  holdout 0.9435  val R2 +0.0562  vs labels-only -0.0260  context gain (k20-k0) -0.0069  1.7 min
+[sweep_lr0.001_warmup300] step  1000  train 0.8978  holdout 0.8655  val R2 +0.0870  vs labels-only +0.0048  context gain (k20-k0) -0.0077  2.3 min *
+[sweep_lr0.001_warmup300] step  1250  train 0.8636  holdout 0.8450  val R2 +0.1026  vs labels-only +0.0203  context gain (k20-k0) +0.0151  2.9 min *
+[sweep_lr0.001_warmup300] step  1500  train 0.8589  holdout 0.8084  val R2 +0.0996  vs labels-only +0.0174  context gain (k20-k0) +0.0134  3.4 min
+[sweep_lr0.001_warmup300] step  1750  train 0.8151  holdout 0.8105  val R2 +0.1160  vs labels-only +0.0338  context gain (k20-k0) +0.0298  4.0 min *
+[sweep_lr0.001_warmup300] step  2000  train 0.8136  holdout 0.8243  val R2 +0.1218  vs labels-only +0.0396  context gain (k20-k0) +0.0343  4.6 min *
+[sweep_lr0.001_warmup300] step  2250  train 0.7925  holdout 0.7855  val R2 +0.1285  vs labels-only +0.0463  context gain (k20-k0) +0.0331  5.1 min *
+[sweep_lr0.001_warmup300] step  2500  train 0.7636  holdout 0.8361  val R2 +0.1335  vs labels-only +0.0512  context gain (k20-k0) +0.0457  5.7 min *
+[sweep_lr0.001_warmup300] step  2750  train 0.7579  holdout 0.7720  val R2 +0.1314  vs labels-only +0.0492  context gain (k20-k0) +0.0443  6.3 min
+[sweep_lr0.001_warmup300] step  3000  train 0.7510  holdout 0.7429  val R2 +0.1310  vs labels-only +0.0488  context gain (k20-k0) +0.0433  6.9 min
+[sweep_lr0.001_warmup100] 822,546 parameters, 3000 iterations
+[sweep_lr0.001_warmup100] step   250  train 0.9615  holdout 0.9362  val R2 +0.0522  vs labels-only -0.0300  context gain (k20-k0) +0.0060  0.6 min *
+[sweep_lr0.001_warmup100] step   500  train 0.9209  holdout 0.9327  val R2 +0.0644  vs labels-only -0.0178  context gain (k20-k0) +0.0037  1.1 min *
+[sweep_lr0.001_warmup100] step   750  train 0.9203  holdout 0.9505  val R2 +0.0588  vs labels-only -0.0234  context gain (k20-k0) -0.0086  1.7 min
+[sweep_lr0.001_warmup100] step  1000  train 0.8912  holdout 0.8461  val R2 +0.0863  vs labels-only +0.0041  context gain (k20-k0) -0.0122  2.3 min *
+[sweep_lr0.001_warmup100] step  1250  train 0.8535  holdout 0.8376  val R2 +0.1090  vs labels-only +0.0268  context gain (k20-k0) +0.0204  2.9 min *
+[sweep_lr0.001_warmup100] step  1500  train 0.8520  holdout 0.8088  val R2 +0.1117  vs labels-only +0.0295  context gain (k20-k0) +0.0319  3.4 min *
+[sweep_lr0.001_warmup100] step  1750  train 0.8115  holdout 0.8002  val R2 +0.0990  vs labels-only +0.0168  context gain (k20-k0) +0.0366  4.0 min
+[sweep_lr0.001_warmup100] step  2000  train 0.8137  holdout 0.8053  val R2 +0.1279  vs labels-only +0.0456  context gain (k20-k0) +0.0492  4.6 min *
+[sweep_lr0.001_warmup100] step  2250  train 0.7963  holdout 0.7711  val R2 +0.1235  vs labels-only +0.0413  context gain (k20-k0) +0.0346  5.1 min
+[sweep_lr0.001_warmup100] step  2500  train 0.7688  holdout 0.8406  val R2 +0.1300  vs labels-only +0.0477  context gain (k20-k0) +0.0444  5.7 min *
+[sweep_lr0.001_warmup100] step  2750  train 0.7631  holdout 0.7859  val R2 +0.1285  vs labels-only +0.0463  context gain (k20-k0) +0.0465  6.3 min
+[sweep_lr0.001_warmup100] step  3000  train 0.7586  holdout 0.7483  val R2 +0.1265  vs labels-only +0.0442  context gain (k20-k0) +0.0448  6.9 min
+[sweep_lr0.001_warmup1000] 822,546 parameters, 3000 iterations
+[sweep_lr0.001_warmup1000] step   250  train 0.9763  holdout 0.9388  val R2 +0.0553  vs labels-only -0.0269  context gain (k20-k0) +0.1371  0.6 min *
+[sweep_lr0.001_warmup1000] step   500  train 0.9325  holdout 0.9498  val R2 +0.0523  vs labels-only -0.0299  context gain (k20-k0) -0.0065  1.1 min
+[sweep_lr0.001_warmup1000] step   750  train 0.9381  holdout 0.9541  val R2 +0.0595  vs labels-only -0.0227  context gain (k20-k0) -0.0037  1.7 min *
+[sweep_lr0.001_warmup1000] step  1000  train 0.9260  holdout 0.9129  val R2 +0.0739  vs labels-only -0.0084  context gain (k20-k0) -0.0059  2.3 min *
+[sweep_lr0.001_warmup1000] step  1250  train 0.8908  holdout 0.8713  val R2 +0.0869  vs labels-only +0.0047  context gain (k20-k0) +0.0067  2.9 min *
+[sweep_lr0.001_warmup1000] step  1500  train 0.8837  holdout 0.8233  val R2 +0.0994  vs labels-only +0.0172  context gain (k20-k0) +0.0183  3.4 min *
+[sweep_lr0.001_warmup1000] step  1750  train 0.8430  holdout 0.8173  val R2 +0.1080  vs labels-only +0.0257  context gain (k20-k0) +0.0341  4.0 min *
+[sweep_lr0.001_warmup1000] step  2000  train 0.8386  holdout 0.8331  val R2 +0.1279  vs labels-only +0.0457  context gain (k20-k0) +0.0333  4.6 min *
+[sweep_lr0.001_warmup1000] step  2250  train 0.8181  holdout 0.7772  val R2 +0.1189  vs labels-only +0.0367  context gain (k20-k0) +0.0210  5.1 min
+[sweep_lr0.001_warmup1000] step  2500  train 0.7811  holdout 0.8342  val R2 +0.1386  vs labels-only +0.0563  context gain (k20-k0) +0.0433  5.7 min *
+[sweep_lr0.001_warmup1000] step  2750  train 0.7700  holdout 0.7671  val R2 +0.1380  vs labels-only +0.0558  context gain (k20-k0) +0.0468  6.3 min
+[sweep_lr0.001_warmup1000] step  3000  train 0.7641  holdout 0.7661  val R2 +0.1362  vs labels-only +0.0540  context gain (k20-k0) +0.0448  6.9 min
+                    name  learning_rate  warmup  best_val_r2
+sweep_lr0.0001_warmup300         0.0001     300     0.081895
+sweep_lr0.0003_warmup300         0.0003     300     0.125611
+ sweep_lr0.001_warmup300         0.0010     300     0.133451
+ sweep_lr0.001_warmup100         0.0010     100     0.129956
+sweep_lr0.001_warmup1000         0.0010    1000     0.138564
+Chosen: {'name': 'sweep_lr0.001_warmup1000', 'learning_rate': 0.001, 'warmup': 1000, 'best_val_r2': 0.1385640874505043}

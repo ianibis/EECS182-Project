@@ -1,0 +1,87 @@
+Final setting: Setting(name='jitter', small=False, strong_dropout=False, jitter_bins=2, timing='none')
+final seed 1 done
+final seed 2 done
+final seed 3 done
+final seed 4 done
+final seed 5 done
+calibrated seed 1 done
+calibrated seed 2 done
+calibrated seed 3 done
+calibrated seed 4 done
+calibrated seed 5 done
+Check: largest difference from saved scores is 0.000000
+      input   k final_setting  n_sessions   final  final_average  calibrated  calibrated_average  first_model  labels_only
+0  recorded   2        jitter          14  0.1834         0.2062      0.1287              0.1569       0.1662       0.0959
+1  recorded   5        jitter          14  0.2294         0.2528      0.1716              0.2004       0.1883       0.1126
+2  recorded  10        jitter          14  0.2572         0.2790      0.1997              0.2248       0.1909       0.1271
+3  recorded  20        jitter          14  0.2816         0.3001      0.2269              0.2478       0.1915       0.1456
+4     amp10   2        jitter          14  0.1208         0.1411      0.0904              0.1173       0.1168       0.0959
+5     amp10   5        jitter          14  0.1671         0.1872      0.1341              0.1591       0.1372       0.1126
+6     amp10  10        jitter          14  0.1919         0.2101      0.1588              0.1802       0.1397       0.1271
+7     amp10  20        jitter          14  0.2181         0.2330      0.1874              0.2039       0.1411       0.1456
+        input group   k                    comparison  n_sessions  n_days  difference  ci_low  ci_high  day_ci_low  day_ci_high  sessions_positive  above_zero
+0    recorded   all   2            final - calibrated          14       5      0.0548  0.0382   0.0725      0.0313       0.0669                 13        True
+1    recorded   all   2           final - first model          14       5      0.0172 -0.0241   0.0580     -0.0274       0.0629                  9       False
+2    recorded   all   2           final - labels-only          14       5      0.0875  0.0366   0.1372      0.0186       0.1321                 12        True
+3    recorded   all   2           average - one model          14       5      0.0227  0.0209   0.0247      0.0208       0.0245                 14        True
+4    recorded   all   2  average - calibrated average          14       5      0.0493  0.0322   0.0666      0.0254       0.0629                 13        True
+5    recorded   all   2         average - first model          14       5      0.0399 -0.0006   0.0796     -0.0072       0.0852                 10       False
+6    recorded   all   2         average - labels-only          14       5      0.1103  0.0594   0.1599      0.0396       0.1561                 12        True
+21   recorded   all   5            final - calibrated          14       5      0.0578  0.0385   0.0772      0.0303       0.0733                 13        True
+22   recorded   all   5           final - first model          14       5      0.0411  0.0081   0.0736     -0.0056       0.0807                 11        True
+23   recorded   all   5           final - labels-only          14       5      0.1169  0.0624   0.1672      0.0362       0.1782                 12        True
+24   recorded   all   5           average - one model          14       5      0.0233  0.0216   0.0250      0.0221       0.0244                 14        True
+25   recorded   all   5  average - calibrated average          14       5      0.0524  0.0330   0.0711      0.0234       0.0682                 13        True
+26   recorded   all   5         average - first model          14       5      0.0644  0.0320   0.0965      0.0167       0.1035                 11        True
+27   recorded   all   5         average - labels-only          14       5      0.1402  0.0859   0.1905      0.0589       0.2018                 12        True
+42   recorded   all  10            final - calibrated          14       5      0.0575  0.0377   0.0795      0.0313       0.0760                 13        True
+43   recorded   all  10           final - first model          14       5      0.0664  0.0419   0.0935      0.0262       0.1078                 14        True
+44   recorded   all  10           final - labels-only          14       5      0.1301  0.0829   0.1769      0.0571       0.1859                 13        True
+45   recorded   all  10           average - one model          14       5      0.0217  0.0205   0.0230      0.0211       0.0226                 14        True
+46   recorded   all  10  average - calibrated average          14       5      0.0541  0.0351   0.0755      0.0296       0.0718                 13        True
+47   recorded   all  10         average - first model          14       5      0.0881  0.0635   0.1153      0.0475       0.1300                 14        True
+48   recorded   all  10         average - labels-only          14       5      0.1518  0.1048   0.1981      0.0793       0.2076                 13        True
+63   recorded   all  20            final - calibrated          14       5      0.0547  0.0385   0.0734      0.0344       0.0712                 14        True
+64   recorded   all  20           final - first model          14       5      0.0901  0.0609   0.1231      0.0469       0.1496                 14        True
+65   recorded   all  20           final - labels-only          14       5      0.1360  0.0973   0.1740      0.0749       0.1835                 13        True
+66   recorded   all  20           average - one model          14       5      0.0185  0.0169   0.0201      0.0167       0.0202                 14        True
+67   recorded   all  20  average - calibrated average          14       5      0.0522  0.0367   0.0702      0.0328       0.0682                 14        True
+68   recorded   all  20         average - first model          14       5      0.1086  0.0789   0.1421      0.0650       0.1691                 14        True
+69   recorded   all  20         average - labels-only          14       5      0.1545  0.1161   0.1917      0.0938       0.2012                 14        True
+70   recorded   all  20                 own - rotated          14       5      0.1211  0.0859   0.1586      0.0810       0.1471                 14        True
+71   recorded   all  20                     own - off          14       5      0.0928  0.0563   0.1280      0.0468       0.1460                 13        True
+72   recorded   all  20                own - other_on          13       4      0.0227  0.0092   0.0366      0.0134       0.0295                 11        True
+73   recorded   all  20                other_on - off          13       4      0.0669  0.0270   0.1082      0.0139       0.1279                  9        True
+96      amp10   all   2            final - calibrated          14       5      0.0304  0.0131   0.0506      0.0018       0.0512                 12        True
+97      amp10   all   2           final - first model          14       5      0.0040 -0.0299   0.0359     -0.0105       0.0225                  9       False
+98      amp10   all   2           final - labels-only          14       5      0.0249 -0.0232   0.0766     -0.0469       0.0921                  8       False
+99      amp10   all   2           average - one model          14       5      0.0203  0.0177   0.0229      0.0161       0.0239                 14        True
+100     amp10   all   2  average - calibrated average          14       5      0.0238  0.0058   0.0442     -0.0061       0.0465                 12        True
+101     amp10   all   2         average - first model          14       5      0.0243 -0.0087   0.0555      0.0076       0.0412                 11       False
+102     amp10   all   2         average - labels-only          14       5      0.0452 -0.0037   0.0979     -0.0283       0.1164                  9       False
+117     amp10   all   5            final - calibrated          14       5      0.0330  0.0145   0.0541      0.0054       0.0582                 11        True
+118     amp10   all   5           final - first model          14       5      0.0299 -0.0082   0.0637     -0.0057       0.0650                 11       False
+119     amp10   all   5           final - labels-only          14       5      0.0546  0.0025   0.1096     -0.0163       0.1390                 10        True
+120     amp10   all   5           average - one model          14       5      0.0201  0.0171   0.0231      0.0147       0.0243                 14        True
+121     amp10   all   5  average - calibrated average          14       5      0.0282  0.0092   0.0494     -0.0006       0.0541                 11        True
+122     amp10   all   5         average - first model          14       5      0.0500  0.0118   0.0841      0.0121       0.0841                 12        True
+123     amp10   all   5         average - labels-only          14       5      0.0747  0.0212   0.1313      0.0009       0.1617                 11        True
+138     amp10   all  10            final - calibrated          14       5      0.0332  0.0131   0.0568      0.0038       0.0617                 11        True
+139     amp10   all  10           final - first model          14       5      0.0522  0.0243   0.0804      0.0202       0.0871                 12        True
+140     amp10   all  10           final - labels-only          14       5      0.0648  0.0167   0.1182     -0.0034       0.1491                 11        True
+141     amp10   all  10           average - one model          14       5      0.0181  0.0154   0.0209      0.0137       0.0216                 14        True
+142     amp10   all  10  average - calibrated average          14       5      0.0299  0.0092   0.0540      0.0010       0.0586                 11        True
+143     amp10   all  10         average - first model          14       5      0.0704  0.0424   0.0983      0.0375       0.1041                 13        True
+144     amp10   all  10         average - labels-only          14       5      0.0829  0.0338   0.1377      0.0126       0.1685                 12        True
+159     amp10   all  20            final - calibrated          14       5      0.0306  0.0115   0.0531      0.0035       0.0593                 11        True
+160     amp10   all  20           final - first model          14       5      0.0770  0.0429   0.1115      0.0377       0.1272                 13        True
+161     amp10   all  20           final - labels-only          14       5      0.0725  0.0312   0.1185      0.0120       0.1460                 11        True
+162     amp10   all  20           average - one model          14       5      0.0150  0.0124   0.0175      0.0110       0.0178                 14        True
+163     amp10   all  20  average - calibrated average          14       5      0.0292  0.0100   0.0516      0.0027       0.0577                 11        True
+164     amp10   all  20         average - first model          14       5      0.0919  0.0580   0.1256      0.0510       0.1403                 13        True
+165     amp10   all  20         average - labels-only          14       5      0.0874  0.0453   0.1347      0.0249       0.1620                 12        True
+166     amp10   all  20                 own - rotated          14       5      0.0788  0.0462   0.1105      0.0365       0.1155                 13        True
+167     amp10   all  20                     own - off          14       5      0.0655  0.0360   0.0943      0.0316       0.1025                 13        True
+168     amp10   all  20                own - other_on          13       4      0.0156 -0.0046   0.0352     -0.0018       0.0284                  9       False
+169     amp10   all  20                other_on - off          13       4      0.0424  0.0176   0.0673      0.0064       0.0744                  9        True
+DONE

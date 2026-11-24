@@ -1,0 +1,12 @@
+matched seed 1: mean R2 +0.0622
+matched seed 2: mean R2 +0.0650
+matched seed 3: mean R2 +0.0603
+matched seed 4: mean R2 +0.0638
+matched seed 5: mean R2 +0.0610
+mismatched seed 1: mean R2 +0.0610
+mismatched seed 2: mean R2 +0.0643
+mismatched seed 3: mean R2 +0.0631
+mismatched seed 4: mean R2 +0.0662
+mismatched seed 5: mean R2 +0.0627
+
+Matched +0.0625   mismatched +0.0634   leak -0.0010  (session range -0.0076 to +0.0028)

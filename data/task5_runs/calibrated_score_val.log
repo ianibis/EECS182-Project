@@ -1,0 +1,53 @@
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+Check: largest difference from saved validation scores is 0.000000
+      input   k  n_sessions  calibrated  first_model  labels_only
+0  recorded   2           6      0.1320       0.1452       0.0576
+1  recorded   5           6      0.1760       0.1560       0.0856
+2  recorded  10           6      0.1950       0.1534       0.0935
+3  recorded  20           6      0.2098       0.1616       0.1122
+4     amp10   2           6      0.1063       0.1143       0.0576
+5     amp10   5           6      0.1395       0.1229       0.0856
+6     amp10  10           6      0.1606       0.1199       0.0935
+7     amp10  20           6      0.1767       0.1256       0.1122
+       input  group   k                comparison  n_sessions  n_days  difference  ci_low  ci_high  day_ci_low  day_ci_high  sessions_positive  above_zero
+18  recorded    all  20  calibrated - labels-only           6       3      0.0976  0.0625   0.1299      0.0468       0.1393                  6        True
+19  recorded    all  20  calibrated - first model           6       3      0.0482 -0.0111   0.1318     -0.0157       0.1386                  5       False
+20  recorded    all  20             own - rotated           6       3      0.0877  0.0437   0.1385      0.0450       0.1429                  6        True
+21  recorded    all  20                 own - off           6       3      0.0890  0.0454   0.1374      0.0310       0.1616                  6        True
+22  recorded    all  20            own - other_on           6       3      0.0281 -0.0277   0.0753      0.0050       0.0642                  4       False
+23  recorded    all  20            other_on - off           6       3      0.0609  0.0084   0.1307      0.0100       0.1566                  5        True
+24  recorded   3 Hz  20  calibrated - labels-only           2       2      0.0940  0.0668   0.1212      0.0668       0.1212                  2        True
+25  recorded   3 Hz  20  calibrated - first model           2       2      0.1203  0.0017   0.2388      0.0017       0.2388                  2        True
+26  recorded   3 Hz  20             own - rotated           2       2      0.1088  0.0883   0.1294      0.0883       0.1294                  2        True
+27  recorded   3 Hz  20                 own - off           2       2      0.0382  0.0139   0.0626      0.0139       0.0626                  2        True
+28  recorded   3 Hz  20            own - other_on           2       2      0.0330 -0.0083   0.0743     -0.0083       0.0743                  1       False
+29  recorded   3 Hz  20            other_on - off           2       2      0.0052 -0.0118   0.0221     -0.0118       0.0221                  1       False
+30  recorded  20 Hz  20  calibrated - labels-only           4       3      0.0994  0.0500   0.1415      0.0269       0.1575                  4        True
+31  recorded  20 Hz  20  calibrated - first model           4       3      0.0121 -0.0275   0.0399     -0.0157       0.0416                  3       False
+32  recorded  20 Hz  20             own - rotated           4       3      0.0771  0.0269   0.1593      0.0206       0.1976                  4        True
+33  recorded  20 Hz  20                 own - off           4       3      0.1143  0.0671   0.1663      0.0481       0.1616                  4        True
+34  recorded  20 Hz  20            own - other_on           4       3      0.0257 -0.0580   0.0887      0.0050       0.0542                  3       False
+35  recorded  20 Hz  20            other_on - off           4       3      0.0887  0.0208   0.1771      0.0097       0.1566                  4        True
+54     amp10    all  20  calibrated - labels-only           6       3      0.0645  0.0321   0.1007      0.0191       0.0963                  6        True
+55     amp10    all  20  calibrated - first model           6       3      0.0511 -0.0087   0.1404     -0.0210       0.1528                  4       False
+56     amp10    all  20             own - rotated           6       3      0.0587  0.0296   0.1109      0.0319       0.1109                  6        True
+57     amp10    all  20                 own - off           6       3      0.0978  0.0568   0.1416      0.0403       0.1676                  6        True
+58     amp10    all  20            own - other_on           6       3      0.0376 -0.0193   0.0862      0.0052       0.0866                  4       False
+59     amp10    all  20            other_on - off           6       3      0.0602 -0.0003   0.1342     -0.0011       0.1624                  4       False
+60     amp10   3 Hz  20  calibrated - labels-only           2       2      0.0274  0.0049   0.0498      0.0049       0.0498                  2        True
+61     amp10   3 Hz  20  calibrated - first model           2       2      0.1342  0.0065   0.2619      0.0065       0.2619                  2        True
+62     amp10   3 Hz  20             own - rotated           2       2      0.0382  0.0358   0.0407      0.0358       0.0407                  2        True
+63     amp10   3 Hz  20                 own - off           2       2      0.0580  0.0333   0.0828      0.0333       0.0828                  2        True
+64     amp10   3 Hz  20            own - other_on           2       2      0.0422 -0.0231   0.1074     -0.0231       0.1074                  1       False
+65     amp10   3 Hz  20            other_on - off           2       2      0.0159 -0.0246   0.0563     -0.0246       0.0563                  1       False
+66     amp10  20 Hz  20  calibrated - labels-only           4       3      0.0830  0.0462   0.1249      0.0333       0.1427                  4        True
+67     amp10  20 Hz  20  calibrated - first model           4       3      0.0096 -0.0210   0.0403     -0.0210       0.0437                  2       False
+68     amp10  20 Hz  20             own - rotated           4       3      0.0689  0.0258   0.1477      0.0231       0.1861                  4        True
+69     amp10  20 Hz  20                 own - off           4       3      0.1177  0.0677   0.1676      0.0473       0.1676                  4        True
+70     amp10  20 Hz  20            own - other_on           4       3      0.0353 -0.0420   0.0825      0.0052       0.0658                  3       False
+71     amp10  20 Hz  20            other_on - off           4       3      0.0824  0.0024   0.1739     -0.0177       0.1624                  3        True
+DONE

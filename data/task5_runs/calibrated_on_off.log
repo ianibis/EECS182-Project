@@ -1,0 +1,21 @@
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+Check: largest difference from saved ON scores is 0.000000
+                               0       1       2       3         4         5         6         7
+input                      amp10   amp10   amp10   amp10  recorded  recorded  recorded  recorded
+k                              2       5      10      20         2         5        10        20
+n_sessions                     6       6       6       6         6         6         6         6
+r2_on                     0.1063  0.1395  0.1606  0.1767     0.132     0.176     0.195    0.2098
+r2_off                    0.0649   0.087  0.0704  0.0789    0.1006    0.1289    0.1107    0.1208
+on_minus_off              0.0414  0.0525  0.0902  0.0978    0.0314    0.0471    0.0843     0.089
+ci_low                    0.0245   0.019    0.05  0.0568    0.0107    0.0176    0.0435    0.0454
+ci_high                   0.0585  0.0857  0.1279  0.1416    0.0522    0.0724    0.1213    0.1374
+day_ci_low                0.0314 -0.0051  0.0289  0.0403    0.0244    0.0012    0.0234     0.031
+day_ci_high               0.0523   0.091  0.1462  0.1676    0.0405    0.0774    0.1389    0.1616
+sessions_positive              6       4       6       6         5         5         5         6
+first_model_on_minus_off   0.012  0.0196  0.0266  0.0256    0.0034    0.0114     0.016    0.0167
+passes_c2                  False   False   False    True     False     False     False      True
+DONE

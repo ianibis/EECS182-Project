@@ -1,0 +1,79 @@
+[diversity_n4_seed1] 822,546 parameters, 6000 iterations
+[diversity_n4_seed1] step   500  train 0.9627  holdout 0.9529  val R2 +0.0570  vs labels-only -0.0253  context gain (k20-k0) -0.0003  2.1 min *
+[diversity_n4_seed1] step  1000  train 0.9366  holdout 0.8827  val R2 +0.0776  vs labels-only -0.0046  context gain (k20-k0) +0.0014  4.2 min *
+[diversity_n4_seed1] step  1500  train 0.9011  holdout 0.8764  val R2 +0.0853  vs labels-only +0.0031  context gain (k20-k0) +0.0142  6.2 min *
+[diversity_n4_seed1] step  2000  train 0.8672  holdout 0.8539  val R2 +0.0820  vs labels-only -0.0002  context gain (k20-k0) +0.0037  8.3 min
+[diversity_n4_seed1] step  2500  train 0.8419  holdout 0.8437  val R2 +0.0971  vs labels-only +0.0148  context gain (k20-k0) +0.0127  10.3 min *
+[diversity_n4_seed1] step  3000  train 0.8156  holdout 0.7432  val R2 +0.0972  vs labels-only +0.0150  context gain (k20-k0) +0.0192  11.8 min *
+[diversity_n4_seed1] step  3500  train 0.7849  holdout 0.7710  val R2 +0.1213  vs labels-only +0.0391  context gain (k20-k0) +0.0288  12.8 min *
+[diversity_n4_seed1] step  4000  train 0.7706  holdout 0.7192  val R2 +0.1159  vs labels-only +0.0337  context gain (k20-k0) +0.0230  14.1 min
+[diversity_n4_seed1] step  4500  train 0.7518  holdout 0.6993  val R2 +0.1033  vs labels-only +0.0211  context gain (k20-k0) +0.0145  16.2 min
+[diversity_n4_seed1] step  5000  train 0.7565  holdout 0.7486  val R2 +0.1211  vs labels-only +0.0388  context gain (k20-k0) +0.0263  18.3 min
+[diversity_n4_seed1] step  5500  train 0.7460  holdout 0.7430  val R2 +0.1202  vs labels-only +0.0380  context gain (k20-k0) +0.0276  20.2 min
+[diversity_n4_seed1] step  6000  train 0.7387  holdout 0.7110  val R2 +0.1203  vs labels-only +0.0381  context gain (k20-k0) +0.0271  22.2 min
+[diversity_n16_seed1] 822,546 parameters, 6000 iterations
+[diversity_n16_seed1] step   500  train 0.9596  holdout 0.9524  val R2 +0.0648  vs labels-only -0.0174  context gain (k20-k0) +0.0418  2.0 min *
+[diversity_n16_seed1] step  1000  train 0.9332  holdout 0.8886  val R2 +0.0869  vs labels-only +0.0047  context gain (k20-k0) +0.0003  4.2 min *
+[diversity_n16_seed1] step  1500  train 0.8922  holdout 0.8542  val R2 +0.0905  vs labels-only +0.0083  context gain (k20-k0) +0.0039  6.2 min *
+[diversity_n16_seed1] step  2000  train 0.8592  holdout 0.8533  val R2 +0.0902  vs labels-only +0.0080  context gain (k20-k0) +0.0012  8.3 min
+[diversity_n16_seed1] step  2500  train 0.8331  holdout 0.8179  val R2 +0.1166  vs labels-only +0.0343  context gain (k20-k0) +0.0195  10.3 min *
+[diversity_n16_seed1] step  3000  train 0.8024  holdout 0.7262  val R2 +0.1221  vs labels-only +0.0398  context gain (k20-k0) +0.0183  12.3 min *
+[diversity_n16_seed1] step  3500  train 0.7771  holdout 0.7417  val R2 +0.1435  vs labels-only +0.0613  context gain (k20-k0) +0.0388  14.4 min *
+[diversity_n16_seed1] step  4000  train 0.7618  holdout 0.7126  val R2 +0.1423  vs labels-only +0.0601  context gain (k20-k0) +0.0347  16.4 min
+[diversity_n16_seed1] step  4500  train 0.7388  holdout 0.6871  val R2 +0.1280  vs labels-only +0.0457  context gain (k20-k0) +0.0236  17.9 min
+[diversity_n16_seed1] step  5000  train 0.7474  holdout 0.7105  val R2 +0.1473  vs labels-only +0.0651  context gain (k20-k0) +0.0432  18.9 min *
+[diversity_n16_seed1] step  5500  train 0.7403  holdout 0.7063  val R2 +0.1478  vs labels-only +0.0655  context gain (k20-k0) +0.0409  19.9 min *
+[diversity_n16_seed1] step  6000  train 0.7279  holdout 0.7435  val R2 +0.1479  vs labels-only +0.0657  context gain (k20-k0) +0.0414  20.9 min *
+[diversity_n64_seed1] 822,546 parameters, 6000 iterations
+[diversity_n64_seed1] step   500  train 0.9612  holdout 0.9542  val R2 +0.0635  vs labels-only -0.0187  context gain (k20-k0) +0.0464  1.0 min *
+[diversity_n64_seed1] step  1000  train 0.9337  holdout 0.8881  val R2 +0.0907  vs labels-only +0.0085  context gain (k20-k0) +0.0031  2.1 min *
+[diversity_n64_seed1] step  1500  train 0.8969  holdout 0.8841  val R2 +0.0971  vs labels-only +0.0148  context gain (k20-k0) -0.0009  3.1 min *
+[diversity_n64_seed1] step  2000  train 0.8638  holdout 0.8638  val R2 +0.0952  vs labels-only +0.0129  context gain (k20-k0) +0.0041  4.1 min
+[diversity_n64_seed1] step  2500  train 0.8375  holdout 0.8473  val R2 +0.1221  vs labels-only +0.0398  context gain (k20-k0) +0.0300  5.1 min *
+[diversity_n64_seed1] step  3000  train 0.8151  holdout 0.7421  val R2 +0.1103  vs labels-only +0.0281  context gain (k20-k0) +0.0135  6.1 min
+[diversity_n64_seed1] step  3500  train 0.7861  holdout 0.7657  val R2 +0.1438  vs labels-only +0.0616  context gain (k20-k0) +0.0430  7.1 min *
+[diversity_n64_seed1] step  4000  train 0.7758  holdout 0.7389  val R2 +0.1340  vs labels-only +0.0518  context gain (k20-k0) +0.0322  8.1 min
+[diversity_n64_seed1] step  4500  train 0.7580  holdout 0.7120  val R2 +0.1260  vs labels-only +0.0438  context gain (k20-k0) +0.0236  9.1 min
+[diversity_n64_seed1] step  5000  train 0.7661  holdout 0.7348  val R2 +0.1489  vs labels-only +0.0667  context gain (k20-k0) +0.0444  10.1 min *
+[diversity_n64_seed1] step  5500  train 0.7564  holdout 0.7317  val R2 +0.1467  vs labels-only +0.0645  context gain (k20-k0) +0.0402  11.1 min
+[diversity_n64_seed1] step  6000  train 0.7519  holdout 0.7392  val R2 +0.1470  vs labels-only +0.0647  context gain (k20-k0) +0.0404  12.1 min
+[diversity_n256_seed1] 822,546 parameters, 6000 iterations
+[diversity_n256_seed1] step   500  train 0.9595  holdout 0.9422  val R2 +0.0612  vs labels-only -0.0210  context gain (k20-k0) -0.0034  1.0 min *
+[diversity_n256_seed1] step  1000  train 0.9326  holdout 0.8913  val R2 +0.0872  vs labels-only +0.0049  context gain (k20-k0) +0.0058  2.1 min *
+[diversity_n256_seed1] step  1500  train 0.8938  holdout 0.8648  val R2 +0.0939  vs labels-only +0.0117  context gain (k20-k0) +0.0056  3.1 min *
+[diversity_n256_seed1] step  2000  train 0.8619  holdout 0.8866  val R2 +0.0884  vs labels-only +0.0061  context gain (k20-k0) -0.0053  4.1 min
+[diversity_n256_seed1] step  2500  train 0.8321  holdout 0.8313  val R2 +0.1283  vs labels-only +0.0461  context gain (k20-k0) +0.0307  5.1 min *
+[diversity_n256_seed1] step  3000  train 0.8075  holdout 0.7639  val R2 +0.1133  vs labels-only +0.0311  context gain (k20-k0) +0.0221  6.1 min
+[diversity_n256_seed1] step  3500  train 0.7823  holdout 0.7758  val R2 +0.1426  vs labels-only +0.0604  context gain (k20-k0) +0.0417  7.1 min *
+[diversity_n256_seed1] step  4000  train 0.7653  holdout 0.7429  val R2 +0.1327  vs labels-only +0.0505  context gain (k20-k0) +0.0222  8.1 min
+[diversity_n256_seed1] step  4500  train 0.7475  holdout 0.7098  val R2 +0.1201  vs labels-only +0.0379  context gain (k20-k0) +0.0124  9.2 min
+[diversity_n256_seed1] step  5000  train 0.7543  holdout 0.7606  val R2 +0.1432  vs labels-only +0.0609  context gain (k20-k0) +0.0351  10.2 min *
+[diversity_n256_seed1] step  5500  train 0.7440  holdout 0.7473  val R2 +0.1414  vs labels-only +0.0592  context gain (k20-k0) +0.0311  11.2 min
+[diversity_n256_seed1] step  6000  train 0.7402  holdout 0.7455  val R2 +0.1418  vs labels-only +0.0595  context gain (k20-k0) +0.0313  12.1 min
+[diversity_n1024_seed1] 822,546 parameters, 6000 iterations
+[diversity_n1024_seed1] step   500  train 0.9590  holdout 0.9424  val R2 +0.0598  vs labels-only -0.0224  context gain (k20-k0) +0.0019  1.0 min *
+[diversity_n1024_seed1] step  1000  train 0.9328  holdout 0.8857  val R2 +0.0860  vs labels-only +0.0038  context gain (k20-k0) +0.0022  2.1 min *
+[diversity_n1024_seed1] step  1500  train 0.8956  holdout 0.8671  val R2 +0.0916  vs labels-only +0.0093  context gain (k20-k0) +0.0161  3.1 min *
+[diversity_n1024_seed1] step  2000  train 0.8660  holdout 0.8721  val R2 +0.0750  vs labels-only -0.0072  context gain (k20-k0) -0.0218  4.1 min
+[diversity_n1024_seed1] step  2500  train 0.8369  holdout 0.8391  val R2 +0.1308  vs labels-only +0.0486  context gain (k20-k0) +0.0343  5.1 min *
+[diversity_n1024_seed1] step  3000  train 0.8097  holdout 0.7918  val R2 +0.1073  vs labels-only +0.0250  context gain (k20-k0) +0.0187  6.1 min
+[diversity_n1024_seed1] step  3500  train 0.7799  holdout 0.7534  val R2 +0.1322  vs labels-only +0.0499  context gain (k20-k0) +0.0363  7.1 min *
+[diversity_n1024_seed1] step  4000  train 0.7679  holdout 0.7699  val R2 +0.1189  vs labels-only +0.0367  context gain (k20-k0) +0.0133  8.1 min
+[diversity_n1024_seed1] step  4500  train 0.7494  holdout 0.6953  val R2 +0.1189  vs labels-only +0.0366  context gain (k20-k0) +0.0181  9.2 min
+[diversity_n1024_seed1] step  5000  train 0.7578  holdout 0.7374  val R2 +0.1369  vs labels-only +0.0547  context gain (k20-k0) +0.0352  10.2 min *
+[diversity_n1024_seed1] step  5500  train 0.7433  holdout 0.7574  val R2 +0.1382  vs labels-only +0.0560  context gain (k20-k0) +0.0355  11.2 min *
+[diversity_n1024_seed1] step  6000  train 0.7401  holdout 0.7728  val R2 +0.1384  vs labels-only +0.0562  context gain (k20-k0) +0.0352  12.1 min *
+[diversity_n4096_seed1] 822,546 parameters, 6000 iterations
+[diversity_n4096_seed1] step   500  train 0.9601  holdout 0.9469  val R2 +0.0575  vs labels-only -0.0247  context gain (k20-k0) -0.0006  1.0 min *
+[diversity_n4096_seed1] step  1000  train 0.9328  holdout 0.8913  val R2 +0.0878  vs labels-only +0.0056  context gain (k20-k0) +0.0022  2.1 min *
+[diversity_n4096_seed1] step  1500  train 0.8956  holdout 0.8655  val R2 +0.0922  vs labels-only +0.0100  context gain (k20-k0) +0.0128  3.1 min *
+[diversity_n4096_seed1] step  2000  train 0.8616  holdout 0.8667  val R2 +0.1000  vs labels-only +0.0178  context gain (k20-k0) +0.0059  4.1 min *
+[diversity_n4096_seed1] step  2500  train 0.8338  holdout 0.8609  val R2 +0.1006  vs labels-only +0.0184  context gain (k20-k0) +0.0109  5.1 min *
+[diversity_n4096_seed1] step  3000  train 0.8074  holdout 0.7632  val R2 +0.1084  vs labels-only +0.0261  context gain (k20-k0) +0.0144  6.1 min *
+[diversity_n4096_seed1] step  3500  train 0.7807  holdout 0.7426  val R2 +0.1217  vs labels-only +0.0395  context gain (k20-k0) +0.0225  7.1 min *
+[diversity_n4096_seed1] step  4000  train 0.7709  holdout 0.7556  val R2 +0.1213  vs labels-only +0.0391  context gain (k20-k0) +0.0220  8.1 min
+[diversity_n4096_seed1] step  4500  train 0.7506  holdout 0.7146  val R2 +0.1158  vs labels-only +0.0336  context gain (k20-k0) +0.0119  9.2 min
+[diversity_n4096_seed1] step  5000  train 0.7545  holdout 0.7589  val R2 +0.1286  vs labels-only +0.0464  context gain (k20-k0) +0.0258  10.2 min *
+[diversity_n4096_seed1] step  5500  train 0.7465  holdout 0.7618  val R2 +0.1319  vs labels-only +0.0497  context gain (k20-k0) +0.0267  11.2 min *
+[diversity_n4096_seed1] step  6000  train 0.7384  holdout 0.7354  val R2 +0.1313  vs labels-only +0.0491  context gain (k20-k0) +0.0260  12.1 min
+ALL DIVERSITY RUNS DONE

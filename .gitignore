@@ -1,8 +1,13 @@
 # Raw and derived data stay local (~15 GB); only code is committed.
-data/
+# Exceptions that teammates use: the Task 5 checkpoints (data/task5_runs, about 145 MB, no file over 4 MB)
+# and the first Task 5 model's per-trial predictions (data/task5_predictions, about 37 MB).
+data/*
+!data/task5_runs/
+!data/task5_predictions/
 
 # Model checkpoints are large binaries; result CSVs in task3_results/ are committed.
 *.pt
+!data/task5_runs/**/*.pt
 
 # Course handout (kept locally, not part of the code)
 EECS-182-Project-Overview.pdf
