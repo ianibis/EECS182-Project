@@ -1,13 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 506 456" width="506" height="456" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 506 344" width="506" height="344" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
 <style>
   svg .name { font-size: 10.5px; font-weight: 600; fill: #1f2328; }
   svg .shape { font-size: 9px; fill: #8b949e;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  svg .head { font-size: 12.5px; font-weight: 700; fill: #1f2328; }
-  svg .note { font-size: 8.5px; fill: #57606a; }
   svg .arrow { stroke: #6e7781; stroke-width: 1.15; }
-  svg .var  { font-size: 8.5px; fill: #1f2328;
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 </style>
 <defs>
   <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5"
@@ -15,77 +11,71 @@
     <path d="M 0 0 L 10 5 L 0 10 z" fill="#6e7781"/>
   </marker>
 </defs>
-<text x="12" y="14" class="head">CausalEEGNet: one forward pass</text>
-<text x="12" y="27" class="note">read down the left column, then the right; sheets are the B samples of one batch, sized to the C x T extent of that stage</text>
-<rect x="20.0" y="34.0" width="96.0" height="62.0" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
-<rect x="16.0" y="37.0" width="96.0" height="62.0" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
-<rect x="12" y="40" width="96.0" height="62.0" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1.3"/>
-<text x="126.0" y="65.0" class="name">input</text>
-<text x="126.0" y="79.0" class="shape">(B, C, T)</text>
-<rect x="20.0" y="114.0" width="96.0" height="62.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
-<rect x="16.0" y="117.0" width="96.0" height="62.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
-<rect x="12" y="120.0" width="96.0" height="62.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1.3"/>
-<text x="126.0" y="145.0" class="name">temporal conv</text>
-<text x="126.0" y="159.0" class="shape">(B, F1, C, T)</text>
-<rect x="20.0" y="194.0" width="96.0" height="62.0" rx="2" fill="#fff4e0" stroke="#c77c02" stroke-width="1" opacity="0.74"/>
-<rect x="16.0" y="197.0" width="96.0" height="62.0" rx="2" fill="#fff4e0" stroke="#c77c02" stroke-width="1" opacity="0.52"/>
-<rect x="12" y="200.0" width="96.0" height="62.0" rx="2" fill="#fff4e0" stroke="#c77c02" stroke-width="1.3"/>
-<text x="126.0" y="225.0" class="name">BatchNorm2d</text>
-<text x="126.0" y="239.0" class="shape">(B, F1, C, T)</text>
-<rect x="20.0" y="274.0" width="96.0" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
-<rect x="16.0" y="277.0" width="96.0" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
-<rect x="12" y="280.0" width="96.0" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1.3"/>
-<text x="126.0" y="291.0" class="name">spatial conv</text>
-<text x="126.0" y="305.0" class="shape">(B, F2, 1, T)</text>
-<rect x="20.0" y="326.0" width="96.0" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.74"/>
-<rect x="16.0" y="329.0" width="96.0" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.52"/>
-<rect x="12" y="332.0" width="96.0" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1.3"/>
-<text x="126.0" y="343.0" class="name">BatchNorm2d + ELU</text>
-<text x="126.0" y="357.0" class="shape">(B, F2, 1, T)</text>
-<rect x="270.0" y="34.0" width="87.2" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.74"/>
-<rect x="266.0" y="37.0" width="87.2" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.52"/>
-<rect x="262" y="40" width="87.2" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1.3"/>
-<text x="376.0" y="51.0" class="name">avg pool, p=0.25</text>
-<text x="376.0" y="65.0" class="shape">(B, F2, 1, T/2)</text>
-<rect x="270.0" y="86.0" width="87.2" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
-<rect x="266.0" y="89.0" width="87.2" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
-<rect x="262" y="92.0" width="87.2" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1.3"/>
-<text x="376.0" y="103.0" class="name">separable conv</text>
-<text x="376.0" y="117.0" class="shape">(B, F2, 1, T/2)</text>
-<rect x="270.0" y="138.0" width="87.2" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.74"/>
-<rect x="266.0" y="141.0" width="87.2" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.52"/>
-<rect x="262" y="144.0" width="87.2" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1.3"/>
-<text x="376.0" y="155.0" class="name">BatchNorm2d + ELU</text>
-<text x="376.0" y="169.0" class="shape">(B, F2, 1, T/2)</text>
-<rect x="270.0" y="190.0" width="46.6" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.74"/>
-<rect x="266.0" y="193.0" width="46.6" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.52"/>
-<rect x="262" y="196.0" width="46.6" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1.3"/>
-<text x="376.0" y="207.0" class="name">avg pool, p=0.25</text>
-<text x="376.0" y="221.0" class="shape">(B, F2, 1, N)</text>
-<rect x="270.0" y="242.0" width="46.6" height="12.1" rx="2" fill="#ffe9e9" stroke="#c62828" stroke-width="1" opacity="0.74"/>
-<rect x="266.0" y="245.0" width="46.6" height="12.1" rx="2" fill="#ffe9e9" stroke="#c62828" stroke-width="1" opacity="0.52"/>
-<rect x="262" y="248.0" width="46.6" height="12.1" rx="2" fill="#ffe9e9" stroke="#c62828" stroke-width="1.3"/>
-<text x="376.0" y="259.0" class="name">regression head</text>
-<text x="376.0" y="273.0" class="shape">(B, N, V)</text>
-<rect x="270.0" y="294.0" width="46.6" height="12.1" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
-<rect x="266.0" y="297.0" width="46.6" height="12.1" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
-<rect x="262" y="300.0" width="46.6" height="12.1" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1.3"/>
-<text x="376.0" y="311.0" class="name">output</text>
-<text x="376.0" y="325.0" class="shape">(B, N, V)</text>
-<line x1="60.0" y1="102.0" x2="60.0" y2="120.0" class="arrow" marker-end="url(#head)"/>
-<line x1="60.0" y1="182.0" x2="60.0" y2="200.0" class="arrow" marker-end="url(#head)"/>
-<line x1="60.0" y1="262.0" x2="60.0" y2="280.0" class="arrow" marker-end="url(#head)"/>
-<line x1="60.0" y1="286.0" x2="60.0" y2="332.0" class="arrow" marker-end="url(#head)"/>
-<line x1="305.6227481086658" y1="46.0" x2="305.6227481086658" y2="92.0" class="arrow" marker-end="url(#head)"/>
-<line x1="305.6227481086658" y1="98.0" x2="305.6227481086658" y2="144.0" class="arrow" marker-end="url(#head)"/>
-<line x1="285.2954198188903" y1="150.0" x2="285.2954198188903" y2="196.0" class="arrow" marker-end="url(#head)"/>
-<line x1="285.2954198188903" y1="202.0" x2="285.2954198188903" y2="248.0" class="arrow" marker-end="url(#head)"/>
-<line x1="285.2954198188903" y1="260.1" x2="285.2954198188903" y2="300.0" class="arrow" marker-end="url(#head)"/>
-<path d="M 60.0 338.0 V 374.0 H 248.0 V 43.0" class="arrow" fill="none"/>
-<line x1="248.0" y1="43.0" x2="260.0" y2="43.0" class="arrow" marker-end="url(#head)"/>
-<line x1="12" y1="388.0" x2="494" y2="388.0" stroke="#eaeef2" stroke-width="1"/>
-<text x="12" y="404.0" class="var">B batch     C 35 channels     T 2000 samples     N 40 bins     V 2     F1 8     D 2     F2 16     K1 500     K2 62     P 2     Q 25     p 0.25</text>
-<text x="12" y="418.0" class="note">normalization: fixed input z-score, then BatchNorm2d after each conv; pooling is average</text>
-<text x="12" y="431.0" class="note">optimizer: Muon on weight matrices + Adam on biases and BatchNorm affine parameters</text>
-<text x="12" y="444.0" class="note">all convolutions are causal (left-only zero padding)</text>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<rect x="20.0" y="2.0" width="96.0" height="62.0" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
+<rect x="16.0" y="5.0" width="96.0" height="62.0" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
+<rect x="12" y="8" width="96.0" height="62.0" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1.3"/>
+<text x="126.0" y="33.0" class="name">input</text>
+<text x="126.0" y="47.0" class="shape">(B, C, T)</text>
+<rect x="20.0" y="82.0" width="96.0" height="62.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
+<rect x="16.0" y="85.0" width="96.0" height="62.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
+<rect x="12" y="88.0" width="96.0" height="62.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1.3"/>
+<text x="126.0" y="113.0" class="name">temporal conv</text>
+<text x="126.0" y="127.0" class="shape">(B, F1, C, T)</text>
+<rect x="20.0" y="162.0" width="96.0" height="62.0" rx="2" fill="#fff4e0" stroke="#c77c02" stroke-width="1" opacity="0.74"/>
+<rect x="16.0" y="165.0" width="96.0" height="62.0" rx="2" fill="#fff4e0" stroke="#c77c02" stroke-width="1" opacity="0.52"/>
+<rect x="12" y="168.0" width="96.0" height="62.0" rx="2" fill="#fff4e0" stroke="#c77c02" stroke-width="1.3"/>
+<text x="126.0" y="193.0" class="name">BatchNorm2d</text>
+<text x="126.0" y="207.0" class="shape">(B, F1, C, T)</text>
+<rect x="20.0" y="242.0" width="96.0" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
+<rect x="16.0" y="245.0" width="96.0" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
+<rect x="12" y="248.0" width="96.0" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1.3"/>
+<text x="126.0" y="259.0" class="name">spatial conv</text>
+<text x="126.0" y="273.0" class="shape">(B, F2, 1, T)</text>
+<rect x="20.0" y="294.0" width="96.0" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.74"/>
+<rect x="16.0" y="297.0" width="96.0" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.52"/>
+<rect x="12" y="300.0" width="96.0" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1.3"/>
+<text x="126.0" y="311.0" class="name">BatchNorm2d + ELU</text>
+<text x="126.0" y="325.0" class="shape">(B, F2, 1, T)</text>
+<rect x="270.0" y="2.0" width="87.2" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.74"/>
+<rect x="266.0" y="5.0" width="87.2" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.52"/>
+<rect x="262" y="8" width="87.2" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1.3"/>
+<text x="376.0" y="19.0" class="name">avg pool, p=0.25</text>
+<text x="376.0" y="33.0" class="shape">(B, F2, 1, T/2)</text>
+<rect x="270.0" y="54.0" width="87.2" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
+<rect x="266.0" y="57.0" width="87.2" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
+<rect x="262" y="60.0" width="87.2" height="6.0" rx="2" fill="#f3f7ff" stroke="#2f6fdb" stroke-width="1.3"/>
+<text x="376.0" y="71.0" class="name">separable conv</text>
+<text x="376.0" y="85.0" class="shape">(B, F2, 1, T/2)</text>
+<rect x="270.0" y="106.0" width="87.2" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.74"/>
+<rect x="266.0" y="109.0" width="87.2" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1" opacity="0.52"/>
+<rect x="262" y="112.0" width="87.2" height="6.0" rx="2" fill="#e7f6e9" stroke="#2e7d32" stroke-width="1.3"/>
+<text x="376.0" y="123.0" class="name">BatchNorm2d + ELU</text>
+<text x="376.0" y="137.0" class="shape">(B, F2, 1, T/2)</text>
+<rect x="270.0" y="158.0" width="46.6" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.74"/>
+<rect x="266.0" y="161.0" width="46.6" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1" opacity="0.52"/>
+<rect x="262" y="164.0" width="46.6" height="6.0" rx="2" fill="#f1e9ff" stroke="#6b46c1" stroke-width="1.3"/>
+<text x="376.0" y="175.0" class="name">avg pool, p=0.25</text>
+<text x="376.0" y="189.0" class="shape">(B, F2, 1, N)</text>
+<rect x="270.0" y="210.0" width="46.6" height="12.1" rx="2" fill="#ffe9e9" stroke="#c62828" stroke-width="1" opacity="0.74"/>
+<rect x="266.0" y="213.0" width="46.6" height="12.1" rx="2" fill="#ffe9e9" stroke="#c62828" stroke-width="1" opacity="0.52"/>
+<rect x="262" y="216.0" width="46.6" height="12.1" rx="2" fill="#ffe9e9" stroke="#c62828" stroke-width="1.3"/>
+<text x="376.0" y="227.0" class="name">regression head</text>
+<text x="376.0" y="241.0" class="shape">(B, N, V)</text>
+<rect x="270.0" y="262.0" width="46.6" height="12.1" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.74"/>
+<rect x="266.0" y="265.0" width="46.6" height="12.1" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1" opacity="0.52"/>
+<rect x="262" y="268.0" width="46.6" height="12.1" rx="2" fill="#e7f0ff" stroke="#2f6fdb" stroke-width="1.3"/>
+<text x="376.0" y="279.0" class="name">output</text>
+<text x="376.0" y="293.0" class="shape">(B, N, V)</text>
+<line x1="60.0" y1="70.0" x2="60.0" y2="88.0" class="arrow" marker-end="url(#head)"/>
+<line x1="60.0" y1="150.0" x2="60.0" y2="168.0" class="arrow" marker-end="url(#head)"/>
+<line x1="60.0" y1="230.0" x2="60.0" y2="248.0" class="arrow" marker-end="url(#head)"/>
+<line x1="60.0" y1="254.0" x2="60.0" y2="300.0" class="arrow" marker-end="url(#head)"/>
+<line x1="305.6227481086658" y1="14.0" x2="305.6227481086658" y2="60.0" class="arrow" marker-end="url(#head)"/>
+<line x1="305.6227481086658" y1="66.0" x2="305.6227481086658" y2="112.0" class="arrow" marker-end="url(#head)"/>
+<line x1="285.2954198188903" y1="118.0" x2="285.2954198188903" y2="164.0" class="arrow" marker-end="url(#head)"/>
+<line x1="285.2954198188903" y1="170.0" x2="285.2954198188903" y2="216.0" class="arrow" marker-end="url(#head)"/>
+<line x1="285.2954198188903" y1="228.1" x2="285.2954198188903" y2="268.0" class="arrow" marker-end="url(#head)"/>
+<path d="M 60.0 306.0 V 342.0 H 248.0 V 11.0" class="arrow" fill="none"/>
+<line x1="248.0" y1="11.0" x2="260.0" y2="11.0" class="arrow" marker-end="url(#head)"/>
 </svg>

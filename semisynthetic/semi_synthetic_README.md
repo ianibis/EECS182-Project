@@ -33,7 +33,7 @@ Two different things in this repository are called "synthetic". They are unrelat
 | Applied to | `/lfp` of stimulation-ON **recordings**, written to disk | stimulation-OFF **training** trials, in memory |
 | Purpose | harder artifact at test time | augmentation so a model learns to ignore a tone |
 | Code | `semisynthetic/EECS182_make_semisynthetic_h5.py` | `task4/utils.py`, `add_stimulation_tones` |
-| Consumers | `task3/task3_gru_results.py --dataset amp10`, `task4/eval_amp10.py` | `task4_2_eegnet.ipynb` section 4.2.6 only |
+| Consumers | `task3/task3_gru_results.py --dataset amp10`, `task4_2_eegnet.ipynb` (arms cell) | `task4_2_eegnet.ipynb` section 4.2.6 only |
 
 The artifact is periodic at the AM rate — one period per 50 ms at 20 Hz, per ~333 ms at
 3 Hz — but it is the *measured* residual: harmonics, amplitude drift and the 35-channel
@@ -50,7 +50,7 @@ condition is the more faithful stress test.
 | Project-file lookup | `project_file` (data root, then its parent) |
 | Round-trip check | `--self-test`, which rebuilds two toy sessions in a temp folder |
 | GRU consumer | `task3/task3_gru_core.py` (`feature_variant`, `high_band_path`, `prepare_features`) |
-| EEGNet consumer | `task4/eval_amp10.py`, `task4/utils.py` (`semisynthetic_paths`, `amp10_test_datasets`) |
+| EEGNet consumer | `task4/utils.py` (`semisynthetic_paths`, `amp10_test_datasets`), called from the 4.2 notebook |
 
 ### Generating
 
@@ -107,7 +107,7 @@ template-shifted OFF training episodes proposed for the in-context model.
 
 ## Characterising the added term as 0-centred noise
 
-`task4/characterise_amp10_noise.py` treats the added term
+The variance characterisation behind `task4/results/amp10_noise_variance.csv` treats the added term
 
     n_c(t) = (scale - 1) * artifact_c(t) = 9 * artifact_c(t)
 
@@ -156,11 +156,11 @@ the binned variance is the quantity to use.
 
 ## PARRM applied to the amplified signal
 
-`task4/make_parrm_amp10.py` writes `semi_synthetic/parrm_amp10_reuse/parrm_h5/`, the 10x
-recording cleaned with the *existing* 1x template (`10x - artifact = recorded + 8 * artifact`),
-so the normal `source='parrm'` loader reads it. `--verify` checks the complementary identity
-`10x - 10 * artifact = parrm(recorded)` on every session; the worst relative RMS error is
-3.7e-8, so re-estimating PARRM on the amplified signal returns the recorded cleaned LFP and
+`semi_synthetic/parrm_amp10_reuse/parrm_h5/` holds the 10x recording cleaned with the
+*existing* 1x template (`10x - artifact = recorded + 8 * artifact`), so the normal
+`source='parrm'` loader reads it. Those files were built and verified against the
+complementary identity `10x - 10 * artifact = parrm(recorded)`; the worst relative RMS error
+is 3.7e-8, so re-estimating PARRM on the amplified signal returns the recorded cleaned LFP and
 needs no new file. Task 4.2.10 scores both arms: re-estimating rescues the fixed EEGNet,
 reusing the 1x template does not.
 
@@ -177,7 +177,7 @@ reusing the 1x template does not.
   condition at the artifact frequencies, not by total variance.
 - **Two PARRM arms, and only one needs building.** The `parrm_none` feature caches were
   computed from the original ON data, so they are not 10x inputs. For the amplified
-  recording, `task4/make_parrm_amp10.py` writes the reused-template arm to
+  recording, the reused-template arm lives in
   `semi_synthetic/parrm_amp10_reuse/parrm_h5/`; the re-estimated arm needs no new file
   because `10x - 10 * artifact` returns the recorded cleaned LFP. The 200-400 Hz companion
   cache is only built for the feature pipeline, so a power-band decoder on the 10x

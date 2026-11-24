@@ -31,13 +31,13 @@ colors = {'Ridge': '#1f77b4', 'KNN': '#2ca02c', 'MLP': '#d62728',
 
 # ---------------------------------------------------------------- predictions
 q9 = U.load_split_dataset(session, 'query', 'export_none', 9)
-X9, y9 = U.windows_from_valid_bins(q9)
+X9, y9 = U.valid_bin_rows(q9)
 v_tab = q9['valid_bins']
 
 ridge = np.load('results/checkpoints/ridge_raw.npz')
 p_ridge = X9 @ ridge['coefficients'] + ridge['intercept']
 
-X_bank, y_bank = U.concat_session_windows(U.OFF_TRAINING_SESSIONS, 'train', 'export_none', 9)
+X_bank, y_bank = U.stack_session_bin_rows(U.STIMULATION_OFF_TRAINING_SESSIONS, 'train', 'export_none', 9)
 knn = U.KNNRegressor(100).fit(X_bank, y_bank)
 p_knn = knn.predict(X9)
 
@@ -55,9 +55,7 @@ p_gru = U.predict_trial_bins(gru, q0)[v_gru]
 
 eeg_q = U.load_lfp_split(session, 'query')
 v_eeg = eeg_q['valid_bins']
-eeg = U.EEGNetRegressor(eeg_q['features'].shape[1])
-eeg.load_state_dict(torch.load('results/checkpoints/eegnet_seed0.pt', map_location='cpu'))
-eeg.eval()
+eeg = U.load_eegnet_checkpoint('task4_2_eegnet_seed0')
 p_eeg = U.predict_trial_bins(eeg, eeg_q)[v_eeg]
 
 preds = {
@@ -125,9 +123,9 @@ fig.savefig(os.path.join(OUT, '03_ridge_weights.png')); plt.close(fig)
 
 # ---------------------------------------------------------------- 04 knn neighbors
 val_sessions = U.sessions_in_split('val', 1)
-X_val, y_val = U.concat_session_windows(val_sessions, 'query', 'export_none', 9)
+X_val, y_val = U.stack_session_bin_rows(val_sessions, 'query', 'export_none', 9)
 calibration = U.SPLITS['calibration']
-cal = [U.load_calibration_windows(s, calibration[s]['subsets']['10'][0],
+cal = [U.load_calibration_bin_rows(s, calibration[s]['subsets']['10'][0],
                                       calibration[s]['pool'], 'export_none', 9)
        for s in val_sessions]
 X_cal, y_cal = [np.concatenate(part) for part in zip(*cal)]
@@ -192,15 +190,16 @@ ax.legend(fontsize=6); ax.set_title('speed compression')
 fig.savefig(os.path.join(OUT, '07_error_vs_speed.png')); plt.close(fig)
 
 # ---------------------------------------------------------------- 08 eegnet filters
-sd = torch.load('results/checkpoints/eegnet_seed0.pt', map_location='cpu')
+sd = torch.load(os.path.join(U.CHECKPOINT_DIR, 'task4_2_eegnet_seed0.pt'),
+                map_location='cpu')
 fig, axes = plt.subplots(1, 3, figsize=(10, 2.5))
-k = sd['layers.1.weight'].squeeze().numpy()
+k = sd['layers.3.weight'].squeeze().numpy()
 axes[0].plot(k.T, lw=0.7); axes[0].set_title('temporal kernels (8 x 500)')
 axes[0].set_xlabel('ms')
-s = sd['layers.3.weight'].squeeze().numpy()
+s = sd['layers.5.parametrizations.weight.original'].squeeze().numpy()
 im = axes[1].imshow(s, aspect='auto', cmap='RdBu_r', vmin=-np.abs(s).max(), vmax=np.abs(s).max())
 axes[1].set_title('spatial filters (16 x 35)'); axes[1].set_xlabel('channel')
-out = sd['layers.15.weight'].squeeze().numpy()
+out = sd['layers.17.conv_classifier.weight'].squeeze().numpy()
 axes[2].imshow(out, aspect='auto', cmap='RdBu_r', vmin=-np.abs(out).max(), vmax=np.abs(out).max())
 axes[2].set_title('output weights (2 x 16)'); axes[2].set_yticks([0, 1]); axes[2].set_yticklabels(['vx', 'vy'])
 fig.colorbar(im, ax=axes[1], shrink=0.8)

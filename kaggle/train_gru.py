@@ -79,7 +79,7 @@ GRID = [dict(hidden=hidden, layers=layers, dropout=dropout)
 
 def main():
     train, validation, test = U.load_gru_datasets(
-        U.RAW_VARIANT, sorted(U.sessions_in_split('test', U.STIMULATED_ON)))
+        U.RAW_VARIANT, sorted(U.sessions_in_split('test', U.STIMULATION_ON)))
     inputs = train['features'].shape[-1]
     if SMOKE:
         test = dict(islice(test.items(), 1))

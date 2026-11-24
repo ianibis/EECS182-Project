@@ -3,8 +3,8 @@
 Emits reports/eegnet_block_diagram.svg: eleven stages in two columns read top-to-bottom
 then left-to-right. Each stage is a tensor graphic (batch = stacked offset sheets, sheet
 size log-scaled to the C x T extent of that stage) with its name and symbolic shape beside
-it, plus a variable legend under the flow. The operations themselves are described in the
-report text, not in the figure, so the blocks stay large enough to read.
+it. The variable legend, normalization, optimizer and causality notes live in the report
+caption, not the figure, so the blocks stay large enough to read.
 
 Hyperparameters are read from task4/utils.py so the diagram cannot silently drift from
 the model. Dropout shown is the sweep winner (0.25), not braindecode's default.
@@ -29,6 +29,7 @@ def read_config():
         m = re.search(r"EEGNET_DEFAULT_SETTINGS = dict\(([^)]*)\)", text)
         if m:
             for key, val in re.findall(r"(\w+)=([\d.]+)", m.group(1)):
+                key = key.removesuffix("_n")  # utils uses temporal_filters_n
                 if key in cfg:
                     cfg[key] = float(val)
     return cfg
@@ -103,11 +104,7 @@ STYLE = """<style>
   svg .name { font-size: 10.5px; font-weight: 600; fill: #1f2328; }
   svg .shape { font-size: 9px; fill: #8b949e;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  svg .head { font-size: 12.5px; font-weight: 700; fill: #1f2328; }
-  svg .note { font-size: 8.5px; fill: #57606a; }
   svg .arrow { stroke: #6e7781; stroke-width: 1.15; }
-  svg .var  { font-size: 8.5px; fill: #1f2328;
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 </style>
 <defs>
   <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5"
@@ -119,7 +116,7 @@ STYLE = """<style>
 
 def build():
     ys, bottoms = {}, {}
-    top0 = 40
+    top0 = 8
     for col, group in ((0, range(SPLIT)), (1, range(SPLIT, len(STAGES)))):
         y = top0
         for idx in group:
@@ -169,30 +166,15 @@ def build():
     arrows.append(f'<line x1="{lane:.1f}" y1="{entry:.1f}" x2="{col_x(1) - 2:.1f}" '
                   f'y2="{entry:.1f}" class="arrow" marker-end="url(#head)"/>')
 
-    top = bottoms[0] + 22
-    footer = [f'<line x1="{PAD}" y1="{top:.1f}" x2="{WIDTH - PAD}" y2="{top:.1f}" '
-              'stroke="#eaeef2" stroke-width="1"/>']
-    oy = top + 16
-    footer.append(f'<text x="{PAD}" y="{oy:.1f}" class="var">B batch     C {C} channels'
-                  f'     T {T} samples     N {N} bins     V {V}     F1 {F}     D {D}     '
-                  f'F2 {F2}     K1 {K1}     K2 {K2}     P {P}     Q {Q}     p {DO}</text>')
-    footer.append(f'<text x="{PAD}" y="{oy + 14:.1f}" class="note">'
-                  'normalization: fixed input z-score, then BatchNorm2d after each conv; pooling is average</text>')
-    footer.append(f'<text x="{PAD}" y="{oy + 27:.1f}" class="note">'
-                  'optimizer: Muon on weight matrices + Adam on biases and BatchNorm affine parameters</text>')
-    footer.append(f'<text x="{PAD}" y="{oy + 40:.1f}" class="note">'
-                  'all convolutions are causal (left-only zero padding)</text>')
-    total = oy + 52
+    total = max(bottoms.values()) + 10
 
     return "\n".join([
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {total:.0f}" '
         f'width="{WIDTH}" height="{total:.0f}" '
         f'font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">',
         STYLE,
-        f'<text x="{PAD}" y="14" class="head">CausalEEGNet: one forward pass</text>',
-        f'<text x="{PAD}" y="27" class="note">read down the left column, then the right; '
-        f'sheets are the B samples of one batch, sized to the C x T extent of that stage</text>',
-        *body, *arrows, *footer, "</svg>",
+        '<rect width="100%" height="100%" fill="#ffffff"/>',
+        *body, *arrows, "</svg>",
     ])
 
 

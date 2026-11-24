@@ -31,9 +31,9 @@ SESSIONS_ON = U.sessions_in_split('val', 1)
 
 def validation_sets(variant):
     return {
-        'off': [U.windows_from_valid_bins(U.load_split_dataset(s, 'query', variant, LAGS))
+        'off': [U.valid_bin_rows(U.load_split_dataset(s, 'query', variant, LAGS))
                 for s in SESSIONS_OFF],
-        'on': [U.windows_from_valid_bins(U.load_split_dataset(s, 'query', variant, LAGS))
+        'on': [U.valid_bin_rows(U.load_split_dataset(s, 'query', variant, LAGS))
                for s in SESSIONS_ON],
     }
 
@@ -52,7 +52,7 @@ def score_model(model, sets):
 print('Ridge alpha sweep')
 ridge = {}
 for variant, label in [('export_none', 'raw'), ('parrm_none', 'parrm')]:
-    X_train, y_train = U.concat_session_windows(U.OFF_TRAINING_SESSIONS, 'train', variant, LAGS)
+    X_train, y_train = U.stack_session_bin_rows(U.STIMULATION_OFF_TRAINING_SESSIONS, 'train', variant, LAGS)
     sets = validation_sets(variant)
     rows = []
     for alpha in U.RIDGE_PENALTIES:
@@ -63,11 +63,11 @@ for variant, label in [('export_none', 'raw'), ('parrm_none', 'parrm')]:
 
 
 print('KNN neighbour sweep')
-X_bank, y_bank = U.concat_session_windows(U.OFF_TRAINING_SESSIONS, 'train', 'export_none', LAGS)
-X_val_off, y_val_off = U.concat_session_windows(SESSIONS_OFF, 'query', 'export_none', LAGS)
-X_val_on, y_val_on = U.concat_session_windows(SESSIONS_ON, 'query', 'export_none', LAGS)
+X_bank, y_bank = U.stack_session_bin_rows(U.STIMULATION_OFF_TRAINING_SESSIONS, 'train', 'export_none', LAGS)
+X_val_off, y_val_off = U.stack_session_bin_rows(SESSIONS_OFF, 'query', 'export_none', LAGS)
+X_val_on, y_val_on = U.stack_session_bin_rows(SESSIONS_ON, 'query', 'export_none', LAGS)
 calibration = U.SPLITS['calibration']
-cal = [U.load_calibration_windows(s, calibration[s]['subsets'][str(U.CALIBRATION_TUNE_TRIALS)][0],
+cal = [U.load_calibration_bin_rows(s, calibration[s]['subsets'][str(U.CALIBRATION_TUNE_TRIALS)][0],
                                       calibration[s]['pool'], 'export_none', LAGS)
        for s in SESSIONS_ON]
 X_cal, y_cal = [np.concatenate(part) for part in zip(*cal)]

@@ -1,25 +1,21 @@
 # Task 4
 
-Three notebooks, one per sub-task, sharing a single helper module. Outputs live
-beside the code so a task is self-contained.
+Self-contained directory containing shared utilities, three sub-task notebooks, and local output folders (`results/`, `checkpoints/`, `training_logs/`, `figures/`).
 
 ```text
 task4/
-  utils.py                     shared code
+  README.md                    documentation
+  utils.py                     loaders, metrics, training loop, sampler, statistics
   task4_1_draws.ipynb          4.1 calibration draws
-  task4_2_eegnet.ipynb         4.2 EEGNet regression decoder
-  task4_3_parrm_ridge.ipynb    4.3 PARRM then ridge refit
-  make_draws.py                CLI wrapper for the 4.1 sampler
-  eval_amp10.py                CLI: score the 4.2 checkpoints across the four input arms
-  make_parrm_amp10.py          CLI: build and verify the PARRM-cleaned 10x inputs
-  compare_decoders.py          CLI: GRU vs EEGNet tables, CIs and checkpoint audit
-  sweep_gru.py                 CLI: twelve-setting GRU sweep
-  train_gru_final.py           CLI: five seeds at the sweep winner, scored
-  characterise_amp10_noise.py  CLI: variance of the added 10x term
-  results/  checkpoints/  training_logs/  figures/
+  task4_2_eegnet.ipynb         4.2 EEGNet decoder; MLP/GRU/EEGNet definitions
+  task4_3_parrm_ridge.ipynb    4.3 PARRM + ridge refit; ridge/kNN definitions
 ```
 
-Run everything from the repository root:
+Model classes (`MLPRegressor`, `GRURegressor`, `CausalEEGNet` in 4.2; `RidgeRegressor`, `KNNRegressor` in 4.3) are defined in notebook cells tagged `MODELS:`. `utils.py` executes these cells so downstream scripts (`kaggle/train_task4_2.py`, `kaggle/train_gru.py`, figure scripts) import directly from `utils`.
+
+## Setup & Execution
+
+Run from the repository root (`utils.py` resolves paths relative to the root):
 
 ```bash
 python3 -m venv .venv
@@ -27,247 +23,51 @@ python3 -m venv .venv
 jupyter lab task4/
 ```
 
-`utils.py` resolves the repository root from its own location, so the notebooks
-work whether Jupyter is started at the root or inside `task4/`.
-
-## Real, semi-synthetic and synthetic input
-
-Four different inputs appear in this task; three of them are recordings on disk.
-
-| Input | What it is | Where it comes from | Who uses it |
-|---|---|---|---|
-| Recorded | the export as acquired, stimulation ON or OFF | `data/export_outputs/h5_export_outputs/` | 4.2, 4.3, GRU baseline |
-| PARRM-cleaned | recorded ON minus the estimated artifact | `data/features/parrm_none/` | 4.3 |
-| Semi-synthetic 10x | recorded ON + 9 × estimated artifact | `data/semi_synthetic/parrm_amp10/h5_export_outputs/` | 4.2.10 only |
-| Synthetic tones | a pure sine added in memory | `utils.add_stimulation_tones` | 4.2.6 training only |
-
-Only the 10x row is a separate dataset to build; the others are variants of the same
-export. The 10x recordings are ON-session evaluation data, never training data.
-
-The semi-synthetic files are built by `semisynthetic/EECS182_make_semisynthetic_h5.py`:
-a copy of the export with only `/lfp` changed, on the 35 channels the decoders read, as
-`lfp + (scale − 1) × parrm_artifact` with `scale = 10`. The artifact is the measured PARRM
-template — periodic at the AM rate, but a real waveform, not a sine. Regenerate with
+To regenerate the 10x semi-synthetic evaluation HDF5 files:
 
 ```bash
 .venv/bin/python semisynthetic/EECS182_make_semisynthetic_h5.py --root data --split val-test --h5-only
 ```
 
-`--root data` is required in this repository, where the recordings live under `data/`
-rather than beside `splits.json`. `--h5-only` skips the feature caches, which only the
-ridge and GRU paths need. `utils.semisynthetic_paths()` and `utils.amp10_test_datasets()`
-read them; `task4/eval_amp10.py` is the CLI.
-
-## 4.1 Calibration draws
-
-For each stimulated test session and each k in {2, 5, 10, 20}, sample calibration
-trials from the declared 20-trial pool (blocks 1-2). Every draw is scored on the same
-fixed 30-trial query (blocks 3-5), so k is the only variable. Writes
-`results/draws.json` (v3, `query_definition = "fixed"`).
-
-- For k = 2, 5, 10, each session has 10 independent distinct k-subsets of the pool.
-  The subsets are **not nested** across k: draw `i` at k=2 is not necessarily contained
-  in draw `i` at k=5 or k=10.
-- For k = 20 the pool itself is the draw, so each session has one partition. The 14
-  test ON sessions therefore give 14 × (10 + 10 + 10 + 1) = 434 partitions.
-- Seeded per session, so the file reproduces and adding a session does not shift
-  the others.
-- Normalisation for a draw uses that draw's calibration trials only; the fixed query
-  is never used for feature statistics.
-- OFF controls use all 50 included OFF trials of the same-day no-stim session, not the
-  30-trial query.
-
-CLI equivalent: `.venv/bin/python task4/make_draws.py`.
-
-The earlier v1 baseline run also used a fixed 30-trial query but stored 10 draws at
-`k=20` (repeats of the full pool); that file is kept as
-`results/draws_fixed_query_legacy.json` and is not read by these notebooks.
-
-## 4.2 EEGNet regression decoder (braindecode)
-
-EEGNet on 1 kHz LFP predicting Index fingertip velocity per 50 ms window, trained
-on stimulation-OFF trials.
-
-- **4.2.1** braindecode `EEGNet` emits one velocity pair per 50 ms bin (pooling 2
-  then 25 over 2000 samples) with `final_conv_length=1`. Its stock convolutions
-  pad symmetrically, so each padded convolution is rebuilt as an explicit
-  left-only pad plus an unpadded convolution. The notebook asserts causality by
-  perturbing the last input sample and checking that only the last bin moves.
-- **4.2.2** Early stopping on validation R² with the best-epoch weights restored,
-  and a NaN-masked loss (`U.masked_mse`) so bins without kinematics do not
-  contribute. `U.train_trial_model` deliberately does not stop early.
-- **4.2.3** Five seeds, held-out OFF R² compared against ridge (task 3.1) plus the KNN,
-  MLP and GRU baselines. OFF R² is scored on each session's same-day no-stimulation
-  recording, which none of the decoders trained on, so the earlier baseline run stays
-  comparable. Days are the unit: 3–4 sessions share each OFF reference.
-
-| Decoder | Input | Adapts? |
-|---|---|---|
-| Ridge | cached features, 9 lags | refit per draw in 4.3 |
-| KNN | cached features | per draw (`knn_incontext`) |
-| MLP | cached features, dense layers | no |
-| GRU | cached features, per-bin sequence | no |
-| EEGNet (4.2) | raw 1 kHz LFP, convolutions | no |
-
-The MLP is not a variant of the EEGNet: it is fully connected on cached per-bin
-features, while EEGNet convolves the raw 1 kHz LFP. Their OFF scores differ for that
-reason, not because of a tuning gap.
-
-The training loop lives in this notebook and the model in `utils.CausalEEGNet`.
-`CausalEEGNet.__init__` builds an explicit `nn.Sequential`, so `print(CausalEEGNet())`
-lists every layer in forward order, and the single definition means this notebook and
-`kaggle/train_task4_2.py` build and reload the same module. Architecture from Lawhern
-et al. 2018, <https://arxiv.org/abs/1611.08024>.
-
-### Hyperparameters
-
-Model arguments of `CausalEEGNet`, defined in `task4_2_eegnet.ipynb`:
-
-| Argument | Default | Values worth sweeping | Effect |
-|---|---|---|---|
-| `temporal_filters` (F1) | 8 | 4, 8, 16 | temporal filters before the first pool |
-| `depth_multiplier` (D) | 2 | 1, 2 | depthwise filters per temporal filter; F2 = F1 × D |
-| `kernel_samples` | 500 | 125, 250, 500, 1000 | temporal receptive field, 125–1000 ms at 1 kHz |
-| `separable_samples` | 62 | 31, 62, 125 | depthwise temporal kernel |
-| `pool_first`, `pool_second` | 2, 25 | (2, 25), (5, 10), (10, 5), (25, 2) | output rate: bins = 2000 / (pool_first × pool_second) |
-| `dropout` | 0.5 | 0.25, 0.5, 0.75 | regularisation between the two blocks |
-
-`pool_first × pool_second` **must divide 2000 into 40 bins**, because the kinematics
-target has one velocity pair per 50 ms bin. Any other product silently misaligns
-predictions and targets, and the constructor raises rather than reshaping.
-
-Fixed by the task: `channel_count=35`, `samples=2000`, `outputs=2`, and
-`final_conv_length=1` inside the class — the last one is what keeps one prediction per
-bin instead of averaging the time axis away.
-
-Training knobs:
-
-| Setting | Default | Where | Values worth sweeping |
-|---|---|---|---|
-| `U.ADAM_LR` | 1e-3 | `utils.py` | 3e-4, 1e-3, 3e-3 (Adam, biases and batch-norm) |
-| `U.MUON_LR` | 0.02 | `utils.py` | 0.01, 0.02, 0.05 (Muon, weight matrices) |
-| `U.LR_FLOOR` | 0.01 | `utils.py` | floor of the cosine decay |
-| `U.TRIAL_BATCH_SIZE` | 16 | `utils.py` | 8, 16, 32 |
-| `MAX_EPOCHS`, `PATIENCE`, `MIN_DELTA` | 200, 20, 1e-4 | notebook | stopping budget and tolerance |
-| `SEEDS` | (0, 1, 2, 3, 4) | notebook | more seeds; 5 cannot resolve the ±0.03 seed spread |
-
-There is no weight decay: `U.build_optimizers` uses Muon on the weight matrices and
-Adam on vectors, with no `weight_decay`. Adding it means touching that function, so it
-affects every decoder, not just EEGNet.
-
-braindecode's `EEGNet` exposes more that the wrapper does not pass through — `F2`,
-`pool_mode` (`mean`/`max`), `activation`, batch-norm `momentum`/`eps`/`affine`,
-`conv_spatial_max_norm`, `norm_rate`. Widen the constructor signature if you want to
-sweep those.
-
-### 4.2.10 Semi-synthetic 10x artifact, and what PARRM does to it
-
-The stimulation artifact is the largest thing in an ON recording, and the real data cannot
-say what happens if it were larger: the amplitude was fixed for every session. The 10x files
-answer that artificially, as `recorded + 9 × parrm_artifact` on the 35 decoded channels.
-
-Nothing is retrained. The seeds from 4.2.5 and 4.2.6 are reloaded and scored on four input
-arms that share the same same-day OFF control:
-
-| Arm | Input | What it isolates |
-|---|---|---|
-| `recorded` | the export | baseline |
-| `amp10` | `recorded + 9 × artifact` | sensitivity to artifact amplitude |
-| `parrm_recorded` | PARRM-cleaned export | what cleaning buys a *fixed* decoder |
-| `parrm_amp10_reuse` | `10x − 1 × artifact` | cleaning with the wrong template scale |
-
-PARRM's estimate scales with the amplitude of the periodic component, so re-estimating it on
-the amplified signal gives `10x − 10 × artifact = clean`. The `parrm_recorded` arm therefore
-*is* the re-estimated result; `task4/make_parrm_amp10.py --verify` checks the identity to
-3e-8 relative RMS and the scores below reproduce it to four decimals. The fourth arm is what
-happens when the existing template library is reused instead, leaving eight copies.
-
-Measured on the 14 test ON sessions (`results/task4_2_amp10_summary.csv`):
-
-| Method | recorded | 10x | PARRM, recorded | PARRM, 10x re-estimated | PARRM, 1x template reused | OFF |
-|---|---:|---:|---:|---:|---:|---:|
-| `eegnet` | −0.145 | −3.244 | **+0.050** | +0.050 | −2.944 | 0.037 |
-| `eegnet_ensemble` | −0.082 | −2.544 | **+0.106** | +0.106 | −2.327 | 0.082 |
-| `eegnet_stimulation_tones` | +0.030 | −0.322 | +0.026 | +0.026 | −0.246 | 0.032 |
-| `eegnet_stimulation_tones_ensemble` | +0.052 | −0.205 | +0.050 | +0.050 | −0.151 | 0.048 |
-
-Three things follow.
-
-1. **Cleaning rescues a fixed decoder, where labels did not have to.** The plain EEGNet goes
-   from −0.145 on the recorded ON input to +0.050 cleaned, and the ensemble from −0.082 to
-   +0.106, which is above its own OFF control (0.082). Task 4.3 found PARRM worth ~0.0005
-   *after* a refit on labelled ON trials; the difference is that a refit can learn to ignore
-   the artifact, while a fixed decoder cannot. Cleaning is the only lever a fixed decoder has.
-2. **Re-estimating matters more than cleaning.** Reusing the 1x template leaves eight copies
-   and stays catastrophic (−2.944). The rescue needs the template to be scaled to the
-   artifact actually present, which is exactly what re-running PARRM on the amplified signal
-   does.
-3. **The tone-augmented arm is already clean-robust and gains nothing** (+0.030 → +0.026), so
-   the two fixes overlap: whichever you do first absorbs most of the benefit.
-
-`loader.normalize` z-scores each channel by its MAD, so a larger artifact also inflates the
-scale and shrinks the neural signal in z-units (MAD ratio 1.9 at 3 Hz, 1.3 at 20 Hz). The
-arms therefore differ in normalisation as well as artifact amplitude, and PARRM removes
-everything phase-locked to the AM cycle, brain included. The variance characterisation in
-`semisynthetic/semi_synthetic_README.md` quantifies the added term directly.
-
-## GRU decoder
-
-The GRU reads the cached spectral features (280 numbers per 50 ms bin) as a 40-step sequence.
-Its own sweep and five-seed run are separate from the archived `results_gru.parquet`:
+To run the GRU sweep and 5-seed ensemble (requires `data/features/export_none/`):
 
 ```bash
-.venv/bin/python task4/sweep_gru.py          # 12 settings, ~10 min on CPU
-.venv/bin/python task4/train_gru_final.py    # 5 seeds at the winner, ~4 min
+python kaggle/train_gru.py
 ```
 
-The sweep selects hidden 256, one layer, no dropout (validation R2 0.0951 against 0.0751 for the
-archived 128-unit setting), and the retrained five-seed ensemble reaches +0.049 clean and +0.046
-stimulated on the day-level protocol. Outputs are `results/gru_sweep.csv`,
-`results/task4_gru_final.csv` and `results/task4_gru_final_seeds.csv`.
+## Data Layout & Inputs
 
-For GPU, `kaggle/train_gru.py` runs both stages in one kernel; it needs the dataset to carry
-`data/features/export_none/`, which `kaggle/build_dataset.py` now links.
+- **Cached features:** `(n_bins, 2800)` per 50 ms bin (`35 channels × 8 features × 10 lags`) or `(n_trials, 40, 2800)` per trial. Used by Ridge, kNN, MLP (bin-level), and GRU (40-step sequence).
+- **LFP:** `(n_trials, 35, 2000)` per trial (`35 channels × 2000 samples` at 1 kHz). Used by CausalEEGNet.
+- **Targets:** `(n_bins, 2)` or `(n_trials, 40, 2)` representing `(Index_vx, Index_vy)`.
+- **Sessions:** `STIMULATION_ON` sessions pair with same-day `STIMULATION_OFF` control sessions via `splits.json` (`off_reference`), scored under `r2_off_*`.
 
-## GRU versus EEGNet
+| Input | Source | Usage |
+|---|---|---|
+| Recorded | `data/export_outputs/h5_export_outputs/` | 4.2, 4.3, GRU baseline |
+| PARRM-cleaned | `data/features/parrm_none/` | 4.3, 4.2.10 evaluation |
+| Semi-synthetic 10x | `data/semi_synthetic/parrm_amp10/h5_export_outputs/` (`lfp + 9 × parrm_artifact`) | 4.2.10 evaluation only |
+| Synthetic tones | `utils.add_stimulation_tones` (in-memory sine addition) | 4.2.6 training only |
 
-`task4/compare_decoders.py` rebuilds every cross-model number from the cached tables and the
-checkpoints themselves, with session-bootstrap CIs and paired differences. The interpretation
-is in [docs/decoder-comparison.md](../docs/decoder-comparison.md); the short version is that
-EEGNet's failure is specific to 3 Hz, its 5-seed ensemble beats the GRU at 20 Hz, and the
-tone-augmented arm lands on the GRU's profile at both frequencies.
+## Sub-tasks
 
-## 4.3 PARRM then ridge refit on each draw
+### 4.1 Calibration Draws (`task4_1_draws.ipynb`)
+- Calls `utils.build_draws` to generate `results/draws.json` (v3, `query_definition = "fixed"`).
+- For each of the 14 test ON sessions, samples non-nested calibration draws of size $k \in \{2, 5, 10\}$ (10 draws each) and $k = 20$ (1 full-pool draw) from the 20-trial pool (blocks 1–2), totaling 434 partitions.
+- Evaluates all draws against a fixed 30-trial query (blocks 3–5); normalizes features using calibration trials only. Controls evaluate all 50 OFF trials.
 
-Refit a ridge decoder on the k calibration trials of every draw, score that
-draw's query trials, for raw and PARRM-cleaned features. The ridge penalty is
-chosen once on the ON validation sessions and held fixed across draws, so
-differences come from the refit data rather than a per-draw hyperparameter
-search.
+### 4.2 EEGNet Decoder (`task4_2_eegnet.ipynb`)
+- **CausalEEGNet:** Rebuilds braindecode `EEGNet` with explicit left-only padding for causality, `channel_count=35`, `samples=2000`, `outputs=2`, and `final_conv_length=1`. `pool_first × pool_second` must equal 50 to map 2000 samples to 40 bins.
+- **Training:** Trains on OFF trials for 5 seeds using Muon (weight matrices, `LR=0.02`) and Adam (vectors, `LR=1e-3`) with NaN-masked MSE (`U.masked_mse`) and early stopping on validation $R^2$ (`MAX_EPOCHS=200`, `PATIENCE=20`, `MIN_DELTA=1e-4`).
+- **4.2.10 Amp10 Evaluation:** Evaluates saved 4.2.5/4.2.6 checkpoints without retraining across `recorded`, `amp10`, `parrm_recorded`, and `parrm_amp10_reuse` arms. Re-estimating PARRM removes the amplified artifact; reusing the 1x template leaves 8x residual artifact.
 
-The notebook imports `task3/task3_common.py` rather than reimplementing ridge:
-`C.ridge_path` solves for a new draw, `C.LAMBDAS` is the 13-value penalty grid,
-and `C.CLIP_Z` clips z-scored features to ±10 so a single artifact bin cannot
-dominate the weights. Task 3 and task 4.3 therefore make the same preprocessing
-and solver choices; only the fit data differs (fixed OFF trials vs. the drawn ON
-trials).
+### 4.3 PARRM + Ridge Refit (`task4_3_parrm_ridge.ipynb`)
+- Uses `task3/task3_common.py` (`C.ridge_path`, `C.LAMBDAS`, `C.CLIP_Z = ±10`).
+- Selects a single ridge penalty on ON validation sessions and refits on the $k$ calibration trials of each draw for raw and PARRM-cleaned features.
 
-## Outputs
+## Key Outputs (`results/`)
 
-| File | Contents |
-|---|---|
-| `results/draws.json` | 4.1 draws plus invariant checks |
-| `results/task4_1_draws_summary.csv` | Per session and k: draw counts, query sizes |
-| `results/task4_2_eegnet_off.csv` | Per session and seed: query and OFF R² |
-| `results/task4_2_seeds.csv` | Best validation R² and stopping epoch per seed |
-| `results/task4_2_vs_ridge.csv` | EEGNet minus ridge 3.1, per session |
-| `results/task4_2_eegnet_amp10.csv` | Per session, method, seed and variant: recorded ON, 10x ON and OFF R² |
-| `results/task4_2_amp10_summary.csv` | Per method: recorded ON, 10x ON, OFF, and the 10x − recorded delta |
-| `results/task4_3_parrm_ridge.csv` | Per session, k, draw and feature variant |
-| `results/task4_3_summary.csv` | Per variant and k with a session bootstrap CI |
-| `results/decoder_comparison.csv` | Every method × input × frequency, with session-bootstrap CIs |
-| `results/decoder_paired.csv` | Paired method differences with CIs and win/loss counts |
-| `results/checkpoint_audit.csv` | Each saved weight file rescored against its cached row |
-| `results/artifact_severity.csv` | Per session, artifact amplitude as a fraction of the ON spread |
-| `results/amp10_noise_variance.csv` | Per session and frequency, the statistics in §4.2.10 |
-| `results/amp10_noise_summary.csv` | The same, medianed per AM frequency |
+- **Draws:** `draws.json`, `task4_1_draws_summary.csv`
+- **EEGNet:** `task4_2_eegnet_off.csv`, `task4_2_seeds.csv`, `task4_2_vs_ridge.csv`, `task4_2_eegnet_amp10.csv`, `task4_2_amp10_summary.csv`, `amp10_noise_variance.csv`, `amp10_noise_summary.csv`
+- **GRU & Ridge:** `gru_sweep.csv`, `task4_gru_final.csv`, `task4_gru_final_seeds.csv`, `task4_3_parrm_ridge.csv`, `task4_3_summary.csv`
+- **Cross-model & Audits:** `decoder_comparison.csv`, `decoder_paired.csv`, `checkpoint_audit.csv`, `artifact_severity.csv`

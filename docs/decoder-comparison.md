@@ -1,10 +1,8 @@
 # GRU vs EEGNet: what the trained checkpoints actually say
 
-Every number here is produced by `task4/compare_decoders.py` from the saved artifacts:
-
-```bash
-.venv/bin/python task4/compare_decoders.py
-```
+Every number here was rebuilt from the saved artifacts; the tables are committed under
+`task4/results/` (`decoder_comparison.csv`, `decoder_paired.csv`,
+`checkpoint_audit.csv`).
 
 It reads `results/results_{ridge_knn,mlp,gru,eegnet}.parquet`, `task4/results/task4_2_*.csv`
 and the checkpoints themselves, then writes:
@@ -94,7 +92,7 @@ fixed deep baseline is 0.01–0.03 R², not the 0.05 the older tables implied.
 
 ## Why 3 Hz is the one that breaks
 
-`task4/characterise_amp10_noise.py` and the 10× arms in `task4/README.md` §4.2.10 isolate the
+`task4/results/amp10_noise_variance.csv` and the 10× arms in `task4/README.md` §4.2.10 isolate the
 mechanism; `semisynthetic/semi_synthetic_README.md` has the full table.
 
 - The artifact is **not** zero-mean white noise. After removing each channel's mean, only
@@ -144,8 +142,8 @@ minus the GRU ensemble is +0.0004 [-0.017,+0.017], and every per-frequency inter
 The paper's claim is therefore that labels buy a few hundredths of R2, not a decisive margin.
 
 Artifacts: `task4/results/gru_sweep.csv`, `task4_gru_final.csv`, `task4_gru_final_seeds.csv`,
-`task4_gru_final_config.json`; scripts `task4/sweep_gru.py`, `task4/train_gru_final.py`, and the
-Kaggle runner `kaggle/train_gru.py`.
+`task4_gru_final_config.json`; the sweep and the five-seed run both live in
+`kaggle/train_gru.py`.
 
 ## Checkpoint audit
 

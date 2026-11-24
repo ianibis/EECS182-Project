@@ -2,9 +2,10 @@
 
 Replaces the old ambiguous two-panel "baseline / synthetic tones" figure, which mixed
 the tones experiment into the seeds section. Now:
-  fig_val_curves.png   -- two panels, both about the five BASELINE runs only:
-      left  = validation R2 after every training epoch, one line per run
-      right = dot plot of the five final scores with mean and sd, the 0.011 claim
+  fig_val_curves.png   -- two panels, validation R2 after every training epoch:
+      left  = the five stimulation-off baseline runs
+      right = the five tone-augmented (stimulation-facing) runs, with the
+              stimulation-off mean as a dotted reference
   fig_tones_curves.png -- the same left-panel style for the five tone-augmented runs,
       used in the appendix where tones are actually introduced.
 
@@ -75,18 +76,30 @@ def curves_panel(ax, curves, dots, bests, color, title, label_runs=False):
 
 
 def val_curves_figure():
+    fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.9), sharey=True)
+
     curves, bests, dots = load('eegnet')
     mean, sd = bests.mean(), bests.std(ddof=1)
-    fig, ax = plt.subplots(figsize=(7.0, 3.8))
-    curves_panel(ax, curves, dots, bests, '#2f5d8a',
-                 'Validation R² during training', label_runs=True)
-    ax.set_ylabel('validation R² (150 held-off trials)')
-    handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', ncol=3, fontsize=6.8,
+    curves_panel(axes[0], curves, dots, bests, '#2f5d8a',
+                 '(a) stimulation-off training', label_runs=True)
+    axes[0].set_ylabel('validation R² (150 held-off clean trials)')
+
+    tone_curves, tone_bests, tone_dots = load('eegnet_stimulation_tones')
+    curves_panel(axes[1], tone_curves, tone_dots, tone_bests, '#d9772a',
+                 '(b) stimulation-facing, tone-augmented', label_runs=True)
+    axes[1].axhline(mean, color='#2f5d8a', lw=1.1, ls=':',
+                    label='stimulation-off mean (0.136)')
+
+    for ax in axes:
+        ax.set_xlim(0, 105)
+        ax.set_ylim(-0.01, 0.16)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    handles += axes[1].get_legend_handles_labels()[0][-1:]
+    labels += axes[1].get_legend_handles_labels()[1][-1:]
+    fig.legend(handles, labels, loc='lower center', ncol=4, fontsize=6.6,
                frameon=False, bbox_to_anchor=(0.5, 0.0))
-    fig.suptitle('Five seeds: individual trajectories and their epoch-wise mean',
-                 fontsize=9.8, y=0.99)
-    fig.tight_layout(rect=(0, 0.16, 1, 0.95))
+    fig.tight_layout(rect=(0, 0.17, 1, 0.98))
     fig.savefig(os.path.join(FIGDIR, 'fig_val_curves.png'), dpi=150)
     plt.close(fig)
     return mean, sd

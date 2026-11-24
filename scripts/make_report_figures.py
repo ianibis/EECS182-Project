@@ -140,17 +140,19 @@ def example_session_predictions():
 
     frame = load_scores()
     best_day = frame[frame.method == 'eegnet'].groupby('day').r2_off_ave.mean().idxmax()
-    session = sorted(s for s in U.sessions_in_split('test', U.STIMULATED_ON)
+    session = sorted(s for s in U.sessions_in_split('test', U.STIMULATION_ON)
                      if s.split('-')[1] == best_day)[0]
-    _, off = U.stimulated_test_datasets()[session]
+    _, control_dataset = U.stimulation_on_test_pairs()[session]
 
-    model = U.CausalEEGNet(temporal_filters=8, depth_multiplier=2, kernel_samples=500,
+    model = U.CausalEEGNet(temporal_filters_n=8, depth_multiplier=2, kernel_samples=500,
                            separable_samples=62, dropout=0.25)
     state = torch.load(os.path.join(U.CHECKPOINT_DIR, 'task4_2_eegnet_seed0.pt'),
                        map_location='cpu', weights_only=True)
     model.load_state_dict(state)
-    prediction = U.predict(model.eval(), off['features'])
-    return session, off['targets'][off['valid_bins']], prediction[off['valid_bins']]
+    prediction = U.predict(model.eval(), control_dataset['features'])
+    control_velocity = control_dataset['targets'][control_dataset['valid_bins']]
+    predicted_velocity = prediction[control_dataset['valid_bins']]
+    return session, control_velocity, predicted_velocity
 
 
 def r2rmse_figure():

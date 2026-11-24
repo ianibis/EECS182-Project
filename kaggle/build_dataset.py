@@ -25,7 +25,10 @@ SESSIONS = sorted(set(U.sessions_in_split('train', 0)) | set(U.sessions_in_split
 
 FILES = ['EECS182_NHP_data_loader.py', 'EECS182_NHP_features.py', 'EECS182_data_manifest.csv',
          'splits.json', 'conditions_eACS_AM-kHz_v2.csv', os.path.join('data', 'manifest.csv'),
-         os.path.join('task4', 'utils.py')]
+         os.path.join('task4', 'utils.py'),
+         # utils.py executes the marked model cells out of these notebooks.
+         os.path.join('task4', 'task4_2_eegnet.ipynb'),
+         os.path.join('task4', 'task4_3_parrm_ridge.ipynb')]
 
 
 def link(source, target):

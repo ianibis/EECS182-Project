@@ -23,6 +23,7 @@ import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UTILS = os.path.join(ROOT, "task4", "utils.py")
+MODELS = os.path.join(ROOT, "task4", "task4_2_eegnet.ipynb")
 LOADER = os.path.join(ROOT, "EECS182_NHP_data_loader.py")
 FEATURES = os.path.join(ROOT, "EECS182_NHP_features.py")
 TRAINER = os.path.join(ROOT, "kaggle", "train_task4_2.py")
@@ -38,6 +39,13 @@ def _read(path):
         return handle.read()
 
 
+def _read_notebook(path):
+    """Concatenate the code cells of a notebook, which is where the models now live."""
+    notebook = json.loads(_read(path))
+    return "\n".join("".join(cell["source"]) for cell in notebook["cells"]
+                     if cell["cell_type"] == "code")
+
+
 def _search(pattern, text, name, cast=float):
     match = re.search(pattern, text, re.S)
     if not match:
@@ -47,16 +55,17 @@ def _search(pattern, text, name, cast=float):
 
 def read_code():
     utils = _read(UTILS)
+    models = _read_notebook(MODELS)
     loader = _read(LOADER)
     features = _read(FEATURES)
     trainer = _read(TRAINER)
 
     signature = re.search(
         r"def __init__\(self, channel_count=(\d+), samples=(\d+), outputs=(\d+), "
-        r"temporal_filters=(\d+),\s*depth_multiplier=(\d+), kernel_samples=(\d+), "
-        r"separable_samples=(\d+),\s*pool_first=(\d+), pool_second=(\d+), "
-        r"dropout=([\d.]+)\)",
-        utils,
+        r"temporal_filters(?:_n)?=(\d+),\s*depth_multiplier=(\d+), "
+        r"kernel_samples=(\d+),\s*separable_samples=(\d+),\s*pool_first=(\d+), "
+        r"pool_second=(\d+),\s*dropout=([\d.]+)\)",
+        models,
         re.S,
     )
     if not signature:

@@ -21,71 +21,35 @@
 
 \section{Causal GRU regression decoder}\label{sec:gru}
 
-We decode 2D fingertip velocity $(v_x,v_y)$ from 35 LFP channels in one macaque. Each trial is a
-2.0~s window with $N=40$ bins of 50~ms, and channels are robust $z$-scored. Days are split
-18/3/5 into train/validation/test; the test set is 14 stimulation-on sessions across five days,
-each paired with a same-day stimulation-off reference. Appendix~\ref{app:design} gives the
-storage, split and batching reference; Appendix~\ref{app:arch} gives the convolutional decoder
-this section is paired with.
+We evaluate a causal gated recurrent unit (GRU) on the 35-channel dataset ($N=40$ bins of 50~ms per 2.0~s trial; 18/3/5 train/validation/test day splits; Appendix~\ref{app:design}). Unlike the raw-waveform convolutional decoder (Appendix~\ref{app:arch}), the GRU operates on causal 280-dimensional spectral features (256~ms mean LFP plus seven log band powers per channel), making it the sequence-aware counterpart to the ridge and MLP baselines.
 
-\paragraph{What the GRU is.}
-A gated recurrent unit scans the 40 bins of a trial in order. At bin $b$ it reads a
-280-dimensional feature vector --- the local motor potential plus seven log band powers on each
-of 35 electrodes, eight numbers per electrode --- updates a 256-unit hidden state
-$\mathbf{h}_b$, and a linear readout maps that state to the two velocity components:
+\paragraph{Architecture and training.}
+Each input $\mathbf{x}_b$ is one bin's 280-dimensional feature vector, $35$ channels $\times$ (a trailing 256-ms mean LFP plus seven log band powers),
+
+Scanning bins left-to-right (Fig.~\ref{fig:gru}), the GRU updates a 256-unit hidden state $\mathbf{h}_b$ and projects linearly to 2D fingertip velocity $\hat{\mathbf{v}}_b$ (413{,}698 parameters; strictly causal without padding):
 \begin{equation}
 \mathbf{h}_b = \mathrm{GRU}\left(\mathbf{x}_b,\mathbf{h}_{b-1}\right),
 \qquad
 \hat{\mathbf{v}}_b = \mathbf{W}\mathbf{h}_b + \mathbf{c}.
 \end{equation}
-The recurrence runs left to right only, so $\hat{\mathbf{v}}_b$ depends on bins up to $b$ and
-the decoder is causal by construction: unlike the convolutional model, no left-only padding
-trick is required. With one layer of 256 units the network has 413{,}698 parameters.
-
-Two structural consequences matter later. The model accumulates evidence across the trial
-instead of treating bins independently, so one noisy bin can be corrected by its neighbours. And
-its input is a 280-number summary per bin rather than the 2{,}000 raw samples, so it never sees
-the artifact waveform --- only what that waveform does to band powers that are themselves
-averaged over 256~ms. That is the same information the ridge and MLP decoders receive, which
-makes the GRU the sequence-aware counterpart to those baselines rather than to the raw-waveform
-network.
-
-\paragraph{Regression loss.}
-Camera tracking intermittently drops the fingertip, so those bins carry no target. They are
-masked rather than fitted as zero velocity: with $m_b$ the valid-bin indicator,
-$M=\sum_b m_b$ and $\mathbf{v}_b$ the measured velocity pair of bin $b$,
+\begin{figure}[htbp]\centering
+\includegraphics[width=\textwidth]{gru_block_diagram.pdf}
+\caption{Causal GRU decoder: sequence-to-sequence regression on per-bin spectral features. A 2.0~s trial is unrolled left-to-right over its $N=40$ 50-ms bins; features are robust $z$-scored per session, and trials stay as sequences, so the GRU reads $(B,N,280)$ with the batch first. The purple arrows are the recurrent (recursive) memory: the cell receives $\mathbf{h}_{b-1}$, and the same 256-unit cell and linear $256\to2$ head are reused at every bin, so the state at bin $b$ depends only on bins $1..b$ (strictly causal, no padding). The right panel opens one cell ($z$ update, $r$ reset, $n$ candidate; $\mathbf{h}_0=\mathbf{0}$). One layer, dropout $p=0$ (identity) at the reported setting; the head is applied to every hidden state. Parameters: $3\times(280{\cdot}256+256{\cdot}256+2{\cdot}256)=413{,}184$ in the GRU plus $256{\cdot}2+2=514$ in the head, $413{,}698$ total.}\label{fig:gru}
+\end{figure}
+To be robust against dropped tracking frames from DeepLabCut, we minimise the masked mean-squared error over valid bins ($m_b \in \{0,1\}$, $M=\sum_b m_b$) and evaluation reports axis-averaged $\Rtwo$:
 \begin{equation}
 L=\frac{1}{M}\sum_b m_b\,\lVert\hat{\mathbf{v}}_b-\mathbf{v}_b\rVert^{2},
 \qquad
 \Rtwo=\tfrac12\left(R^2_{v_x}+R^2_{v_y}\right),
 \qquad
 R^2_{v}=1-\frac{\sum_b (v_b-\hat v_b)^2}{\sum_b (v_b-\bar v)^2},
+\qquad
+R{xy} = \frac{1}{n-1} \sum ^n _{i=1} \left( \frac{x_i - \bar{x}}{s_x} \right) \left( \frac{y_i - \bar{y}}{s_y} \right).
 \end{equation}
-so $M$ absorbs the varying number of usable bins per recording and $\Rtwo=0$ means no better
-than predicting the mean velocity.
-
-\paragraph{How it was trained.}
-The protocol is deliberately identical to the convolutional decoder's, so that any difference
-in the results is attributable to the model rather than to the setup: 560 stimulation-off
-trials from 42 sessions, validation on 150 trials from 9 sessions, batch size 16, early
-stopping (patience 20 epochs, ceiling 200) on validation $\Rtwo$ with the best epoch restored,
-Muon for the 2-D weight matrices and Adam for the 1-D vectors under a cosine schedule. Five
-seeds differ only in initialisation, batch order and dropout masks. No stimulated label enters
-training.
-
-\paragraph{Hyperparameter sweep.}
-Table~\ref{tab:grusweep} sweeps hidden width, depth and dropout at one seed. Width dominates:
-at one layer without dropout, 256 units reaches $+0.0951$ against $+0.0751$ for 128 and
-$+0.0585$ for 64. Depth does not help --- two layers never beat one at matched width, and at 256
-units they lose $0.011$ --- and dropout of 0.2 costs $0.003$ to $0.005$ at every width. The winner
-(256 units, one layer, no dropout) is the setting carried into the five-seed run below, so the
-sweep and the reported table describe the same network. Its margin over the 128-unit settings
-used earlier exceeds the $\pm0.011$ cross-seed spread of the convolutional decoder, which is
-why the retrained model is reported rather than the older one.
+Training matches the convolutional protocol without stimulated labels: 560 stimulation-off training trials (42 sessions), 150 validation trials (9 sessions), batch size 16, cosine-scheduled Muon (2-D weights) and Adam (1-D parameters), and early stopping (patience 20, max 200 epochs) across five seeds. A single-seed sweep over width, depth, and dropout (Table~\ref{tab:grusweep}) selects 1 layer of 256 units with no dropout ($\Rtwo = +0.0951$); additional layers or dropout consistently degrade validation performance.
 
 \begin{table}[htbp]\centering
-\caption{GRU hyperparameter sweep, ranked by clean validation $R^2$ (one seed, 3 held-out
-sessions). The best setting, carried forward to the five-seed run, is in bold.}
+\caption{GRU hyperparameter sweep ranked by clean validation $R^2$ (one seed, 3 validation days). Bold indicates the configuration carried into the five-seed evaluation.}
 \small
 \begin{tabular}{@{}cccrrrr@{}}\toprule
 Hidden & Layers & Dropout & Parameters & Val.\ $R^2$ & Best epoch & Last epoch \\ \midrule
@@ -104,145 +68,52 @@ Hidden & Layers & Dropout & Parameters & Val.\ $R^2$ & Best epoch & Last epoch \
 \bottomrule\end{tabular}\label{tab:grusweep}
 \end{table}
 
-\paragraph{Final performance.}
-Table~\ref{tab:gruref} reports test $\Rtwo$ on the five held-out days, for the single-seed mean
-and the five-seed prediction ensemble, on the same-day stimulation-off recording and on the
-stimulated recording. Without any stimulated label the ensemble reaches $+0.049$ on clean input
-and $+0.046$ under stimulation. Two features deserve emphasis.
-
-First, the stimulated score does not collapse. Splitting by modulation frequency, the ensemble
-scores $+0.045$ at 3~Hz and $+0.048$ at 20~Hz, against $+0.050$ and $+0.046$ on the clean
-recording of the same sessions --- the artifact costs almost nothing in either condition. The
-convolutional decoder, reading raw samples, loses everything at 3~Hz; the GRU, reading band
-powers, does not.
-
-Second, averaging predictions is worth about $0.012$ $\Rtwo$ over the mean of the individual
-seeds ($+0.049$ against $+0.036$ clean; $+0.046$ against $+0.035$ stimulated), which is the
-same direction and a similar size to the convolutional ensemble's gain. The ensemble is
-therefore the quantity compared against the adapted decoders, not any single run.
-
-\begin{table}[htbp]\centering
-\caption{GRU test $R^2$ (axis-averaged over $v_x,v_y$) across the 5 held-out days and 5 seeds,
-with day-level bootstrap 95\% CIs. The ensemble averages the five per-bin predictions before
-scoring. Trained without stimulated labels.}
-\small
-\begin{tabular}{@{}lcc@{}}\toprule
-Decoder & Clean test $R^2$ & Stimulated test $R^2$ \\ \midrule
-GRU, single-seed mean (5 seeds) & $+0.036\ [+0.017,+0.056]$ & $+0.035\ [+0.020,+0.049]$ \\
-GRU, 5-seed prediction ensemble & $+0.049\ [+0.031,+0.068]$ & $+0.046\ [+0.030,+0.061]$ \\
-\bottomrule\end{tabular}\label{tab:gruref}
-\end{table}
-
-Against the other decoders, the GRU is the most stable of the fixed models: it is the only one
-whose stimulated score is within $0.01$ of its clean score at both modulation frequencies, and
-it needs no tuning of the input representation to get there.
-
-It is also, after retraining, indistinguishable from spending 20 labelled stimulated trials on a
-linear refit. Pairing the two session by session, ridge refit at $k=20$ minus the GRU ensemble is
-$+0.0004$ $[-0.017,+0.017]$ over all 14 sessions, $-0.008$ at 3~Hz and $+0.009$ at 20~Hz, every
-interval spanning zero, with eight of fourteen sessions favouring each. The honest summary is that
-this sequence model, with no stimulated labels, recovers roughly what 20 labelled trials buy a
-linear decoder: the label advantage is a few hundredths of $\Rtwo$, below this dataset's
-resolution. Appendix~\ref{app:results} gives the full comparison with paired intervals.
+\paragraph{Test performance and comparison.}
+Across the 5 held-out test days (Table~\ref{tab:gruref}), ensembling predictions across five seeds improves test $\Rtwo$ by ${\sim}0.012$ over the single-seed mean, reaching $+0.049$ on clean references and $+0.046$ under stimulation without any stimulated training labels. Crucially, accuracy remains stable across both modulation frequencies ($+0.045$ at 3~Hz vs.\ $+0.050$ clean; $+0.048$ at 20~Hz vs.\ $+0.046$ clean): unlike the raw-waveform decoder, which collapses at 3~Hz, 256~ms spectral averaging filters out the fast carrier transient while temporal recurrence smooths single-bin noise. Paired session
 
 \appendix
 
-\section{Recording, stimulation artifact and cleaning}
+\section{Recording, stimulation artifact, and cleaning}
 \label{app:data}
 \label{app:artifact}
 
-The animal performs a reaching task on a touchscreen: it holds a button until a go cue, then
-touches five targets in sequence for a juice reward. Hand position is tracked from a side
-camera by DeepLabCut. Neural activity is recorded from an implanted 64-electrode array over
-motor cortex; 35 electrodes survive quality control and are used for decoding. LFP is sampled
-at 1~kHz. The dataset contains 70 sessions over 26 days: 22 without stimulation, 22 with 3~Hz
-modulation and 26 with 20~Hz modulation, each with 50 rewarded trials in five blocks of ten.
-All rewarded trials are entirely stimulation-on in stimulation sessions and entirely
-stimulation-off in no-stimulation sessions.
+\paragraph{Task and recording setup.}
+In a touchscreen reach-and-grasp task, the subject holds a start button until a go cue and then sequentially touches five targets for a juice reward while a side camera tracks hand kinematics via DeepLabCut. Local field potentials (LFPs) are sampled at 1~kHz from a 64-electrode motor cortex array, retaining $C=35$ quality-controlled channels. The dataset comprises 70 sessions across 26 days (22 unstimulated, 22 at 3~Hz, and 26 at 20~Hz), each containing 50 rewarded trials (five 10-trial blocks) with uniform stimulation conditions throughout.
 
-During stimulation a 3.5~kHz carrier is delivered at 1.75~mA through the implanted
-electrodes, amplitude-modulated at 3~Hz (period 333~ms) or 20~Hz (period 50~ms). The
-recording hardware only partly demodulates the carrier, so a residual of the modulation
-envelope appears on every channel. Because the modulator is clocked, that residual repeats at
-the modulation period: it is a fixed, stimulation-locked waveform whose amplitude and shape
-differ between channels, not random noise.
-
-Folding a recording at the modulation period and averaging isolates the periodic component.
-On the worst channel it reaches 3.1 robust $z$-units at 3~Hz and 2.0 at 20~Hz, against
-0.04--0.05 on the median channel and 0.02--0.04 in unstimulated recordings. Single transients
-are far larger than the periodic part, reaching 3\,622 and 7\,064 $z$-units against a maximum
-clean excursion of 25~$z$; the feature pipelines therefore clip standardised features at
-$\pm10\,z$ so that one artifact-dominated bin cannot determine a linear decoder's weights.
-Two consequences shape the analysis. The artifact is concentrated, so a decoder can in
-principle learn to down-weight a few electrodes, and it is not a clean sinusoid, so
-``assume a tone at the modulation frequency'' is a model rather than a description.
+\paragraph{Artifact characteristics.}
+Stimulation delivers a 1.75~mA, 3.5~kHz carrier amplitude-modulated at 3~Hz (333~ms period) or 20~Hz (50~ms period). Incomplete hardware demodulation leaves a clocked, channel-specific residual envelope across electrodes. Folding recordings at the modulation period isolates this periodic component (Table~\ref{tab:artifact}; Figs.~\ref{fig:artifact3}--\ref{fig:artifact20}): on the worst channel it reaches $3.1\,z$ (3~Hz) and $2.0\,z$ (20~Hz), versus $0.04\text{--}0.05\,z$ on the median channel and $0.02\text{--}0.04\,z$ in unstimulated recordings. Individual transients are orders of magnitude larger—peaking at $3{,}622\,z$ (3~Hz) and $7{,}064\,z$ (20~Hz) compared with a clean ceiling of $25\,z$—prompting feature pipelines to clip standardized inputs at $\pm 10\,z$ so single-bin spikes cannot dominate linear weights. Consequently, the artifact is spatially concentrated (allowing decoders to down-weight affected channels) and non-sinusoidal, making pure-tone assumptions an approximation rather than an exact model.
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_artifact_3hz.png}
-\caption{3~Hz stimulation day, worst channel. (a) one second of raw LFP around the largest transient, against the same-day unstimulated recording on the same channel. (b) the whole stimulation recording folded at the 333~ms period: the line is the median over cycles and the band the interquartile range, so a handful of multi-thousand-$z$ transients cannot set the curve. Red is the stimulated recording; the grey dashed line is the same-day unstimulated reference; the red band is the 25--75\% range (not clipped). The fold is flat, so the artifact carries no stable periodic template to estimate; what the decoder has to survive is the transient and its slow decay in (a).}\label{fig:artifact3}
+\caption{Worst-channel artifact under 3~Hz stimulation (red) versus same-day unstimulated reference (grey dashed). (a) One second of raw LFP around the peak transient. (b) Recording folded at the 333~ms period showing cycle-wise median and unclipped interquartile range (25--75\% shaded). The flat fold demonstrates that slow transient decay, rather than a stable periodic waveform, dominates the distortion.}\label{fig:artifact3}
 \end{figure}
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_artifact_20hz.png}
-\caption{20~Hz stimulation day, worst channel. (a) one second of raw LFP around the largest transient: a step to about 7000~$z$ followed by a decay of several hundred milliseconds, so one transient outlasts many 50~ms periods. (b) the whole recording folded at the 50~ms period and high-passed above 5~Hz to remove the slow step; the line is the median over cycles and the band the interquartile range. Red is the stimulated recording; the grey dashed line is the same-day unstimulated reference; the red band is the 25--75\% range (not clipped).}\label{fig:artifact20}
+\caption{Worst-channel artifact under 20~Hz stimulation (red) versus same-day unstimulated reference (grey dashed). (a) One second of raw LFP around the peak ${\sim}7{,}000\,z$ transient, whose multi-hundred-millisecond decay spans several 50~ms periods. (b) Recording folded at 50~ms and high-passed above 5~Hz to isolate periodic structure (cycle-wise median and unclipped interquartile range).}\label{fig:artifact20}
 \end{figure}
 
 \begin{table}[htbp]\centering
 \caption{Cycle-averaged artifact amplitude and peak transients in robust $z$-units.}
+\label{tab:artifact}
 \small
 \begin{tabular}{@{}lcccccc@{}}\toprule
-Modulation & Period & Worst ch. & Avg. worst & Avg. median & Avg. clean & Peak transient \\ \midrule
-3 Hz  & 333 ms & 2  & 3.1~z & 0.05~z & 0.04~z & 3622~z \\
-20 Hz & 50 ms  & 34 & 2.0~z & 0.04~z & 0.02~z & 7064~z \\
-\bottomrule\end{tabular}\label{tab:artifact}
+Modulation & Period & Worst ch. & Avg.\ worst & Avg.\ median & Avg.\ clean & Peak transient \\ \midrule
+3~Hz  & 333~ms & 2  & $3.1\,z$ & $0.05\,z$ & $0.04\,z$ & $3{,}622\,z$ \\
+20~Hz & 50~ms  & 34 & $2.0\,z$ & $0.04\,z$ & $0.02\,z$ & $7{,}064\,z$ \\
+\bottomrule\end{tabular}
 \end{table}
 
-PARRM~\cite{dastinvanrijn2021} exploits the repetition. Average the recording at the same
-phase across many modulation cycles: neural and movement-related activity wanders from cycle
-to cycle and averages out, while the artifact sits at the same phase every cycle and survives.
-The average is a template of the artifact; subtract the template, per channel and per phase,
-and what remains is nominally artifact-free. In the implementation used here the subtracted
-component is a per-window gain times a mean template, with gains fitted in 1~s windows. Two
-properties matter downstream. PARRM needs no labels, no kinematics and no calibration trials.
-And it cannot distinguish artifact at phase $\theta$ from brain activity at phase $\theta$:
-anything phase-locked to the stimulus is removed along with the artifact. On this dataset the
-filter removes a median 17\% of the power in the modulation bin at 20~Hz and about 5\% at
-3~Hz, while a sham filter applied to unstimulated data at the same period removes essentially
-none, so the cleaning is real but partial.
+\paragraph{PARRM cleaning.}
+PARRM~\cite{dastinvanrijn2021} removes phase-locked artifacts by averaging recordings across modulation cycles to construct a per-channel phase template—averaging out non-phase-locked neural activity—and subtracting a fitted gain-scaled template within 1~s windows. PARRM requires no kinematic labels or calibration trials, though it unavoidably attenuates any genuine neural signal phase-locked to the stimulus. On this dataset, PARRM removes a median 17\% (20~Hz) and 5\% (3~Hz) of power in the modulation frequency bin versus negligible power under a period-matched sham filter on clean data, providing partial, label-free suppression.
 
-\section{Decoding task, partitions and statistics}
-\label{app:design}
+\section{Decoding task, partitions and statistics}\label{app:design}
 
-The target is the velocity of the index fingertip, $(v_x,v_y)$, in screen cm/s, sampled in
-50~ms bins from $0.5$~s before to $1.5$~s after the go cue, giving 40 bins per trial. Two
-input representations are used, and the distinction organises the results. \emph{Spectral
-features} are, per electrode and bin, the mean LFP over the preceding 256~ms and seven log
-band powers between 1 and 200~Hz, computed causally: eight numbers per electrode per bin, 280
-per bin, 2\,800 for a bin plus its nine predecessors. The \emph{raw waveform} is the 2\,000
-LFP samples of the window per electrode, 35 channels, standardised per channel within the
-session.
+We predict 2D index-fingertip velocity $(v_x,v_y)$ (cm/s) across 40 consecutive 50~ms bins ($[t_{\mathrm{go}}-0.5,\, t_{\mathrm{go}}+1.5]$\,s) from two causal representations across 35 standardized channels: \emph{spectral features} (256~ms mean LFP plus seven log band powers from 1--200~Hz across 10 lags, yielding $2{,}800$ features/bin) and \emph{raw waveforms} ($2{,}000$ samples/trial). 
 
-Sessions are partitioned by day into fixed train, validation and test sets; days are held
-out, not trials. The test set contains 14 stimulation-on sessions, seven per modulation
-frequency. Each is matched to the no-stimulation recording from the same day --- five
-distinct recordings, since the three or four stimulated sessions of a day share one --- which
-no decoder trains on. Scoring a decoder there gives the \emph{clean} column used throughout:
-same decoder, same day, no artifact.
+Sessions are split by day into fixed train, validation, and test sets; the test set comprises 14 stimulation-on sessions (seven per frequency) paired with their five shared same-day unstimulated recordings to provide the \emph{clean} baseline. Within each test session, the first 20 trials form a calibration pool and the final 30 form a fixed query set, yielding 434 partitions across $k\in\{2,5,10,20\}$ (10 draws for $k<20$, 1 for $k=20$). 
 
-Within a stimulation session the first two blocks (20 trials) form a calibration pool and the
-last three (30 trials) the query set, which is never used for fitting. For each session and
-each $k\in\{2,5,10,20\}$ we sample subsets of $k$ trials from the pool: ten distinct subsets
-for $k<20$, the whole pool for $k=20$, giving 434 partitions over the 14 sessions. Each is a
-\emph{draw}, scored on that draw's 30 query trials. $k$ is a dose--response axis: the session
-and the query trials stay fixed and only the labelled stimulated data changes.
-
-Two levels of nesting must be respected. The ten draws within a session are correlated by
-construction --- a $k=2$ draw is contained in the corresponding $k=5$ draw, and all ten at
-$k=20$ are the same set --- and five seeds of a network are not independent evidence about
-the data. Seeds and draws are therefore averaged \emph{inside} a session, and the 14 sessions
-(seven per frequency) are the sample. Intervals are percentile intervals from 2\,000 bootstrap
-resamples of sessions; resampling draws or seeds instead would shrink them by roughly
-$\sqrt{10}$ and manufacture significance.
+Because draws and random seeds are nested within sessions, we average them per session first and compute 95\% percentile confidence intervals from $2{,}000$ session-level bootstrap resamples.
 
 \input{data_pipeline_table}
 
@@ -285,21 +156,13 @@ intervals and their direction is not interpreted.
 \begin{center}
 \includegraphics[width=0.68\textwidth]{eegnet_block_diagram.pdf}
 \captionsetup{hypcap=false}
-\captionof{figure}{Causal EEGNet forward pass (read down the left column, then the right). Stacked sheets denote batch $B$; each sheet is drawn at the real extent of its stage, so the height falls from $C=35$ channels to one and the width from $T=2{,}000$ samples to $N=40$ 50-ms bins and finally $(B,N,V)$. Pooling is average ($P=2$, then $Q=25$); dropout is $p=0.25$; all convolutions are causal.}\label{fig:arch}
+\captionof{figure}{Causal EEGNet forward pass (read down the left column, then the right). Stacked sheets are the $B$ samples of one batch, each drawn at the real extent of its stage, so the height falls from $C=35$ channels to one and the width from $T=2{,}000$ samples to $N=40$ 50-ms bins and finally $(B,N,V)$ with $V=2$. The stages use $F_1=8$ temporal filters, depth multiplier $D=2$ ($F_2=16$), kernel lengths $K_1=500$ and $K_2=62$ samples, average pooling $P=2$ then $Q=25$, and dropout $p=0.25$. Inputs are fixed $z$-scores and every convolution is followed by \texttt{BatchNorm2d}; pooling is average, and all convolutions are causal (left-only zero padding). Weight matrices are trained with Muon, and biases and BatchNorm affine parameters with Adam.}\label{fig:arch}
 \end{center}
 We adapt \texttt{braindecode}'s EEGNet into a causal, per-bin regressor (5{,}922 parameters in the forward pass, stored as 6{,}005 scalars because the unit-norm spatial filter is parametrised by a direction and a length; Fig.~\ref{fig:arch}). The Causal EEGNet is an eleven-stage CNN with ELU activations.
 
-The \emph{temporal convolution} slides a learned $1\times K_1$ filter ($K_1=500$, i.e.\ 500~ms) along time and reads all $C=35$ channels at once, producing $F_1=8$ feature maps; this is the stage that learns the shape of a temporal pattern. The \emph{spatial convolution} is depthwise with a $C\times1$ kernel, so each map becomes its own weighted mix of electrodes rather than a mix of maps; with depth multiplier $D=2$ this gives $F_2=F_1D=16$ maps and collapses the channel axis to one row. The \emph{separable convolution} pairs a $1\times K_2$ depthwise filter ($K_2=62$) along time with a $1\times1$ pointwise convolution, filtering each map's time course and then recombining across maps. The two \emph{pool\,+\,(dropout)} stages are \emph{average} pooling by $P=2$ and then by $Q=25$ with dropout $p=0.25$, which is what sets the output rate. The \emph{regression head} is a $1\times1$ convolution from $F_2=16$ maps to $V=2$ values, so the output is one $(v_x,v_y)$ pair per bin. Setting \texttt{final\_conv\_length=1} with two output channels and pooling factors of 2 and 25 maps $T=2{,}000$ input samples onto $N=40$ 50-ms velocity bins, one velocity pair per step. Fig.~\ref{fig:conv} draws the left padding and the kernel at the first, middle, and last output positions.
+Our causal EEGNet regressor passes $C=35$ channels ($T=2{,}000$ samples) through a $1\times K_1$ temporal convolution ($K_1=500$, $F_1=8$), a depthwise $C\times 1$ spatial convolution ($D=2$, $F_2=16$), a $1\times K_2$ separable convolution ($K_2=62$), and sequential average pooling ($P=2$, $Q=25$; dropout $p=0.25$) before a $1\times 1$ regression head (\texttt{final\_conv\_length=1}) outputs $(v_x,v_y)$ across $N=40$ 50-ms bins. 
 
-\begin{figure}[htbp]\centering
-\includegraphics[width=\textwidth]{causal_convolution.png}
-\caption{One causal temporal convolution on a single 1D LFP trial. The input is left-padded with $K_1-1=499$ zeros (grey); the $1\times K_1$ kernel ($K_1=500$ samples, 500~ms) slides left to right. The first output $y[0]$ sees 499 zeros plus $x[0]$; $y[250]$ sees 249 zeros plus $x[0..250]$; after 500 samples the kernel is fully inside the signal. No output sees a future sample. The same left-only scheme is used for the $K_2=62$ separable convolution.}\label{fig:conv}
-\end{figure}
-
-BatchNorm2d follows each convolution; it is a normalisation layer, not an optimizer. The two optimization algorithms are Muon, which updates the 2-D weight matrices via an orthogonalised update, and Adam, which updates the 1-D vectors (biases and the BatchNorm scale/shift parameters). Muon is not applied to 1-D vectors because the orthogonalisation is defined for matrices; Adam handles them at a small learning rate. The input z-score is a fixed per-channel preprocessing step, BatchNorm2d is a learned normalisation inside the network, and Muon/Adam are optimizers: they act at different stages and are not alternatives.
-
-Replacing symmetric padding with left-only zero-padding before unpadded convolutions ensures each prediction depends strictly on current and past samples: $K_1-1$ zeros are added at the early edge for the $1\times K_1$ filter and $K_2-1$ for the $1\times K_2$ one. Spatial filters are projected onto the unit $\ell_2$-sphere after every gradient step, so only their direction is learned and never their scale; every saved model sits at exactly 1.000.
-
+We enforce causality by applying left-only zero-padding ($K_1-1$ and $K_2-1$ samples; Fig.~\ref{fig:conv}). Each convolution is followed by \texttt{BatchNorm2d}; 2-D weight matrices are trained with Muon, 1-D parameters with Adam, and spatial filters are projected onto the unit $\ell_2$-sphere after every step.
 
 \subsection{Training objective and hyperparameter selection}\label{sec:loop}
 Because camera tracking intermittently drops the fingertip, we mask missing targets ($m_b=1$ on valid bins, $M=\sum_b m_b$) in the mean squared error loss and evaluate axis-averaged $R^2$:
@@ -348,7 +211,7 @@ EEGNet + synthetic tones (App.~\ref{app:tones}) & $+0.033\ [+0.008,+0.058]$ & $+
 \end{table}
 
 \subsection{Seed variance and validation curves}\label{sec:seeds}
-Across five random seeds (governing weight initialization, batch order, and dropout), validation $R^2$ reaches $0.136 \pm 0.011$ (individual runs: $0.146, 0.140, 0.122, 0.145, 0.125$; stopping between epochs 68 and 103; Fig.~\ref{fig:curves}). This $\pm 0.011$ standard deviation defines our experimental noise floor. Fig.~\ref{fig:seedspread} shows the same five kept scores beside the tone-augmented runs.
+Across five random seeds (governing weight initialization, batch order, and dropout), validation $R^2$ on held-off \textbf{stimulation-off} trials reaches $0.136\pm0.011$ (individual runs 0.146, 0.140, 0.122, 0.145, 0.125; stopping between epochs 68 and 103; Fig.~\ref{fig:curves}a). This $\pm 0.011$ standard deviation defines our experimental noise floor. Fig.~\ref{fig:seedspread} shows the same five kept scores beside the tone-augmented runs, and Fig.~\ref{fig:curves}b shows their training curves.
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=0.72\textwidth]{fig_seed_spread.png}
@@ -357,7 +220,7 @@ Across five random seeds (governing weight initialization, batch order, and drop
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_val_curves.png}
-\caption{Validation $R^2$ during training for the five seeds. One colour per run; the bold black line is the epoch-wise mean of the five runs, the dashed line its 5-epoch running average, and the red dots mark the checkpoint each run kept. The five kept scores average $0.136\pm0.011$ (reported in the text).}\label{fig:curves}
+\caption{Validation $R^2$ during training for the five seeds. (a) Decoders trained on \textbf{stimulation-off} trials only; validation uses 150 held-off stimulation-off trials. (b) The stimulation-facing arm: the same stimulation-off training trials with synthetic 3/20~Hz tones added (Appendix~\ref{app:tones}), so no stimulated recordings or labels are used and validation remains on clean stimulation-off trials. One colour per run; the bold black line is the epoch-wise mean of the five runs, the dashed line its 5-epoch running average, and the red dots mark the checkpoint each run kept. The five kept scores average $0.136\pm0.011$ in (a) and $0.067\pm0.006$ in (b); the dotted line in (b) is the stimulation-off mean of (a).}\label{fig:curves}
 \end{figure}
 
 
@@ -701,7 +564,7 @@ To test whether training against periodic interference improves zero-shot transf
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_tones_curves.png}
-\caption{Clean validation $R^2$ across training epochs for the five tone-augmented runs. One colour per run; the bold black line is the seed mean, the dashed line its 5-epoch running average, and the red dots mark the kept checkpoints. The dotted line is the unaugmented baseline mean of 0.136, so the whole cluster sits below it: tones buy stimulated robustness at a cost in clean accuracy.}\label{fig:tonescurves}
+\caption{Clean validation $R^2$ across training epochs for the five tone-augmented runs; the same runs are panel (b) of Fig.~\ref{fig:curves}. One colour per run; the bold black line is the seed mean, the dashed line its 5-epoch running average, and the red dots mark the kept checkpoints. The dotted line is the unaugmented baseline mean of 0.136, so the whole cluster sits below it: tones buy stimulated robustness at a cost in clean accuracy.}\label{fig:tonescurves}
 \end{figure}
 
 \begin{table}[htbp]\centering
