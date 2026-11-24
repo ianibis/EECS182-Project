@@ -46,6 +46,9 @@ def main():
              os.path.join(DEST, 'data/export_outputs/h5_export_outputs', f'{session}.h5'))
         link(os.path.join(REPO, 'data/kinematics_v3/bins50ms', f'{session}_bins50ms.csv'),
              os.path.join(DEST, 'data/kinematics_v3/bins50ms', f'{session}_bins50ms.csv'))
+        # The GRU and MLP read the cached spectral features, not the raw LFP.
+        link(os.path.join(REPO, 'data/features/export_none', f'{session}.h5'),
+             os.path.join(DEST, 'data/features/export_none', f'{session}.h5'))
         link(os.path.join(REPO, 'data/export_outputs/trials', f'{session}_trials.csv'),
              os.path.join(DEST, 'data/export_outputs/trials', f'{session}_trials.csv'))
 

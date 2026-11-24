@@ -10,7 +10,12 @@ task4/
   task4_2_eegnet.ipynb         4.2 EEGNet regression decoder
   task4_3_parrm_ridge.ipynb    4.3 PARRM then ridge refit
   make_draws.py                CLI wrapper for the 4.1 sampler
-  eval_amp10.py                CLI: score the 4.2 checkpoints on the 10x recordings
+  eval_amp10.py                CLI: score the 4.2 checkpoints across the four input arms
+  make_parrm_amp10.py          CLI: build and verify the PARRM-cleaned 10x inputs
+  compare_decoders.py          CLI: GRU vs EEGNet tables, CIs and checkpoint audit
+  sweep_gru.py                 CLI: twelve-setting GRU sweep
+  train_gru_final.py           CLI: five seeds at the sweep winner, scored
+  characterise_amp10_noise.py  CLI: variance of the added 10x term
   results/  checkpoints/  training_logs/  figures/
 ```
 
@@ -55,21 +60,28 @@ read them; `task4/eval_amp10.py` is the CLI.
 
 ## 4.1 Calibration draws
 
-For each stimulated test session and each k in {2, 5, 10, 20}, sample 10 sets of k
-stimulation-ON trials. The remaining ON trials are that draw's query set, per
-`docs/project-spec.md`. Writes `results/draws.json`.
+For each stimulated test session and each k in {2, 5, 10, 20}, sample calibration
+trials from the declared 20-trial pool (blocks 1-2). Every draw is scored on the same
+fixed 30-trial query (blocks 3-5), so k is the only variable. Writes
+`results/draws.json` (v3, `query_definition = "fixed"`).
 
-- Draws are nested: draw `i` at k=2 is contained in draw `i` at k=5, 10 and 20.
+- For k = 2, 5, 10, each session has 10 independent distinct k-subsets of the pool.
+  The subsets are **not nested** across k: draw `i` at k=2 is not necessarily contained
+  in draw `i` at k=5 or k=10.
+- For k = 20 the pool itself is the draw, so each session has one partition. The 14
+  test ON sessions therefore give 14 × (10 + 10 + 10 + 1) = 434 partitions.
 - Seeded per session, so the file reproduces and adding a session does not shift
   the others.
-- Normalisation uses the drawn trials, because the query set is the leftover ON
-  trials and would otherwise overlap the statistics.
+- Normalisation for a draw uses that draw's calibration trials only; the fixed query
+  is never used for feature statistics.
+- OFF controls use all 50 included OFF trials of the same-day no-stim session, not the
+  30-trial query.
 
 CLI equivalent: `.venv/bin/python task4/make_draws.py`.
 
-The earlier baseline run used a fixed 30-trial query set instead; that file is
-kept as `results/draws_fixed_query_legacy.json` and is not read by these
-notebooks.
+The earlier v1 baseline run also used a fixed 30-trial query but stored 10 draws at
+`k=20` (repeats of the full pool); that file is kept as
+`results/draws_fixed_query_legacy.json` and is not read by these notebooks.
 
 ## 4.2 EEGNet regression decoder (braindecode)
 
@@ -199,6 +211,32 @@ arms therefore differ in normalisation as well as artifact amplitude, and PARRM 
 everything phase-locked to the AM cycle, brain included. The variance characterisation in
 `semisynthetic/semi_synthetic_README.md` quantifies the added term directly.
 
+## GRU decoder
+
+The GRU reads the cached spectral features (280 numbers per 50 ms bin) as a 40-step sequence.
+Its own sweep and five-seed run are separate from the archived `results_gru.parquet`:
+
+```bash
+.venv/bin/python task4/sweep_gru.py          # 12 settings, ~10 min on CPU
+.venv/bin/python task4/train_gru_final.py    # 5 seeds at the winner, ~4 min
+```
+
+The sweep selects hidden 256, one layer, no dropout (validation R2 0.0951 against 0.0751 for the
+archived 128-unit setting), and the retrained five-seed ensemble reaches +0.049 clean and +0.046
+stimulated on the day-level protocol. Outputs are `results/gru_sweep.csv`,
+`results/task4_gru_final.csv` and `results/task4_gru_final_seeds.csv`.
+
+For GPU, `kaggle/train_gru.py` runs both stages in one kernel; it needs the dataset to carry
+`data/features/export_none/`, which `kaggle/build_dataset.py` now links.
+
+## GRU versus EEGNet
+
+`task4/compare_decoders.py` rebuilds every cross-model number from the cached tables and the
+checkpoints themselves, with session-bootstrap CIs and paired differences. The interpretation
+is in [docs/decoder-comparison.md](../docs/decoder-comparison.md); the short version is that
+EEGNet's failure is specific to 3 Hz, its 5-seed ensemble beats the GRU at 20 Hz, and the
+tone-augmented arm lands on the GRU's profile at both frequencies.
+
 ## 4.3 PARRM then ridge refit on each draw
 
 Refit a ridge decoder on the k calibration trials of every draw, score that
@@ -227,3 +265,9 @@ trials).
 | `results/task4_2_amp10_summary.csv` | Per method: recorded ON, 10x ON, OFF, and the 10x − recorded delta |
 | `results/task4_3_parrm_ridge.csv` | Per session, k, draw and feature variant |
 | `results/task4_3_summary.csv` | Per variant and k with a session bootstrap CI |
+| `results/decoder_comparison.csv` | Every method × input × frequency, with session-bootstrap CIs |
+| `results/decoder_paired.csv` | Paired method differences with CIs and win/loss counts |
+| `results/checkpoint_audit.csv` | Each saved weight file rescored against its cached row |
+| `results/artifact_severity.csv` | Per session, artifact amplitude as a fraction of the ON spread |
+| `results/amp10_noise_variance.csv` | Per session and frequency, the statistics in §4.2.10 |
+| `results/amp10_noise_summary.csv` | The same, medianed per AM frequency |

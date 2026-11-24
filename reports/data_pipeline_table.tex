@@ -1,0 +1,23 @@
+\begin{table}[htbp]\centering
+\caption{Task 4 dataset, tensor shapes, splits, and calibration protocol ($C=35$ channels, $T=2{,}000$ samples, $N=40$ 50\,ms bins, $V=2$ velocity axes).}
+\label{tab:datapipeline}
+\footnotesize
+\begin{tabular}{@{}p{0.22\textwidth}p{0.72\textwidth}@{}}
+\toprule
+Component & Specification \\
+\midrule
+\multicolumn{2}{@{}l}{\textbf{(a) Preprocessing and Tensor Shapes}} \\
+Recordings \& Scaling & 70 sessions (1\,kHz raw LFP); 35 fixed motor-cortex channels centered and scaled per recording by median and MAD ($z$-units). \\
+Inputs & Window $[t_{\mathrm{go}}-0.5,\, t_{\mathrm{go}}+1.5]$\,s ($40 \times 50$\,ms bins): raw LFP $(N_{\mathrm{trials}}, 35, 2000)$ for EEGNet; lagged spectral/LMP features $(N_{\mathrm{trials}}, 40, 2800)$ for window models ($8\text{ features} \times 35\text{ ch} \times 10\text{ lags}$). \\
+Targets \& Mask & Binned fingertip velocity $(v_x, v_y)$ in cm/s, shape $(N_{\mathrm{trials}}, 40, 2)$, paired with binary validity mask $(N_{\mathrm{trials}}, 40)$. \\
+\midrule
+\multicolumn{2}{@{}l}{\textbf{(b) Date-Grouped Splits (70 Sessions Across 26 Days)}} \\
+Train / Val (21 days) & \textbf{Train (18d):} 42 sessions (14 OFF, 13 at 3\,Hz, 15 at 20\,Hz). \textbf{Val (3d):} 9 sessions (3 OFF, 2 at 3\,Hz, 4 at 20\,Hz). \\
+Test (5 days) & 19 sessions: 5 OFF, 7 at 3\,Hz, 7 at 20\,Hz (1, 3, 3, 3, 4 ON sessions/day, each paired with its day's OFF reference). \\
+\midrule
+\multicolumn{2}{@{}l}{\textbf{(c) Calibration Draws and Model Batching}} \\
+Calibration Partitions & Across 14 test ON sessions: first 20 trials = calibration pool; final 30 trials = fixed query set. For $k \in \{2, 5, 10, 20\}$: 10 subsets for $k < 20$ and 1 full-pool draw for $k = 20$ ($434$ partitions). \\
+Training \& Batching & \textbf{Causal EEGNet:} 560 train / 150 val OFF trials (batch 16; $F_1=8, D=2, F_2=16, K_1=500, K_2=62$, pool $2\times 25, p=0.25$). \textbf{Window models:} valid bins $(N_{\mathrm{valid}}, 2800)$; batch 256 (MLP/GRU) or closed-form (ridge). \\
+\bottomrule
+\end{tabular}
+\end{table}

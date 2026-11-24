@@ -69,7 +69,6 @@ AMP10_VARIANT = 'amp10'  # feature_variant label for rows scored on the 10x reco
 
 # PARRM-cleaned counterpart of a stimulation-ON recording: the artifact subtracted.
 PARRM_DIR = os.path.join(DATA_DIR, 'parrm_outputs', 'parrm_h5')
-PARRM_VARIANT = 'parrm_lfp'  # feature_variant label for rows scored on the cleaned LFP
 
 MANIFEST_PATH = os.path.join(PROJECT_ROOT, 'EECS182_data_manifest.csv')
 SPLITS_PATH = os.path.join(PROJECT_ROOT, 'splits.json')
@@ -624,14 +623,22 @@ def run_mlp(variant, feature_label, lag_count, sessions, seeds, training_log_dir
 GRU_HIDDEN_SIZE = 128
 
 class GRURegressor(nn.Module):
-    def __init__(self, input_size):
+    """Per-bin velocity from a trial's sequence of cached features.
+
+    `hidden`, `layers` and `dropout` default to the values the saved seed-0 checkpoint
+    was trained with, so GRURegressor(input_size) still loads it strictly.
+    """
+
+    def __init__(self, input_size, hidden=GRU_HIDDEN_SIZE, layers=1, dropout=0.0):
         super().__init__()
-        self.gru = nn.GRU(input_size, GRU_HIDDEN_SIZE, batch_first=True)
-        self.output = nn.Linear(GRU_HIDDEN_SIZE, 2)
+        self.gru = nn.GRU(input_size, hidden, num_layers=layers, batch_first=True,
+                          dropout=dropout if layers > 1 else 0.0)
+        self.dropout = nn.Dropout(dropout)
+        self.output = nn.Linear(hidden, 2)
 
     def forward(self, trials):
         hidden_states, _ = self.gru(trials)
-        return self.output(hidden_states)
+        return self.output(self.dropout(hidden_states))
 
 def load_gru_datasets(variant, sessions):
     def load_part(s, part):
@@ -1526,12 +1533,15 @@ def parrm_test_datasets(sessions=None, parrm_dir=None):
 # cleaning the amplified recording. See task4/make_parrm_amp10.py for why
 # 'parrm_reestimated' is the existing PARRM output rather than a new file.
 PARRM_AMP10_REUSE_DIR = os.path.join(DATA_DIR, 'semi_synthetic', 'parrm_amp10_reuse', 'parrm_h5')
+# feature_variant labels written into the result tables, one per arm. Distinct from
+# PARRM_VARIANT ('parrm_none'), which names the cached-feature directory.
+PARRM_LFP_VARIANT = 'parrm_lfp'
 PARRM_REUSE_VARIANT = 'parrm_amp10_reuse'
 
 ARM_VARIANTS = {
     'recorded': 'raw',
     'amp10': AMP10_VARIANT,
-    'parrm_recorded': PARRM_VARIANT,
+    'parrm_recorded': PARRM_LFP_VARIANT,
     'parrm_amp10_reuse': PARRM_REUSE_VARIANT,
 }
 

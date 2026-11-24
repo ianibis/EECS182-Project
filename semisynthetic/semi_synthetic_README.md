@@ -114,7 +114,7 @@ template-shifted OFF training episodes proposed for the in-context model.
 as a noise term, removes each channel's mean, and reports what is left. It runs on the
 stimulation-on samples only, since the artifact estimate is zero elsewhere. Outputs are
 `task4/results/amp10_noise_variance.csv` (per session), `amp10_noise_summary.csv` (median
-per AM frequency) and `results/fig_amp10_noise.png`.
+per AM frequency) and `results/fig_amp10_noise.png`; both CSVs are under `task4/results/`.
 
 Medians over the seven test sessions at each frequency:
 
@@ -175,8 +175,12 @@ reusing the 1x template does not.
   the recording, so on the kept channels the 10x LFP's standard deviation is roughly
   1.1-1.5x the recorded one even though the artifact term itself is 10x. Judge the
   condition at the artifact frequencies, not by total variance.
-- **PARRM-cleaned 10x does not exist.** The `parrm_none` caches were computed from the
-  original ON data. To evaluate PARRM against the amplified recording itself, re-run PARRM
-  on the amplified signal.
+- **Two PARRM arms, and only one needs building.** The `parrm_none` feature caches were
+  computed from the original ON data, so they are not 10x inputs. For the amplified
+  recording, `task4/make_parrm_amp10.py` writes the reused-template arm to
+  `semi_synthetic/parrm_amp10_reuse/parrm_h5/`; the re-estimated arm needs no new file
+  because `10x - 10 * artifact` returns the recorded cleaned LFP. The 200-400 Hz companion
+  cache is only built for the feature pipeline, so a power-band decoder on the 10x
+  recording also needs `--h5-only` dropped from the generation command.
 - **Coverage.** `--split val-test` produces the 20 ON sessions in the validation and test
   splits; `--split all` produces all 48.

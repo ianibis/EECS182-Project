@@ -71,6 +71,19 @@ PAIRS = (
 def load_scores():
     frames = [pd.read_parquet(os.path.join(U.RESULTS_DIR, name)) for name in PARQUETS]
     scores = pd.concat(frames, ignore_index=True)
+
+    # results_eegnet.parquet and task4_2_eegnet_off.csv are both missing the
+    # tone-augmented ensemble's 14 rows, although the run produced them. Recover them from
+    # the four-arm file, whose recorded arm agrees with the cached rows exactly for every
+    # method that is present (verified: max |difference| = 0.0).
+    ninex = pd.read_csv(os.path.join(U.TASK4_RESULTS, 'task4_2_eegnet_amp10.csv'))
+    recorded_arm = ninex[ninex.feature_variant == 'raw']
+    absent = set(recorded_arm.method.unique()) - set(scores.method.unique())
+    if absent:
+        recovered = recorded_arm[recorded_arm.method.isin(absent)]
+        scores = pd.concat([scores, recovered.drop(columns='feature_variant')],
+                           ignore_index=True)
+
     # Ridge and KNN are evaluated per draw and per k. Keep the largest k so the
     # "refit k=20" label matches the rows; the k=0 rows are the no-adaptation arms.
     largest = scores[scores.k > 0].k.max()
@@ -155,6 +168,7 @@ def artifact_severity(sessions):
 def audit_checkpoints(test, amplified, cleaned, skip):
     """Reload every checkpoint and score it against the row already on disk."""
     rows = []
+    sessions = sorted(test) if test else []
     cached = pd.read_csv(os.path.join(U.TASK4_RESULTS, 'task4_2_eegnet_off.csv'))
     for method in (U.EEGNET_METHOD, U.EEGNET_TONE_METHOD):
         for seed in range(5):
@@ -175,24 +189,35 @@ def audit_checkpoints(test, amplified, cleaned, skip):
                 row['max_abs_session_difference'] = float(aligned)
             rows.append(row)
 
-    # The older baseline checkpoints: only seed 0 was kept, so compare that one.
-    legacy = {'gru': (U.GRURegressor(280), 'results/checkpoints/gru_seed0.pt',
-                      'results_gru.parquet'),
-              'mlp': (U.MLPRegressor(280), 'results/checkpoints/mlp_seed0.pt',
-                      'results_mlp.parquet')}
-    for method, (model, path, parquet) in legacy.items():
+    # The older baseline checkpoints: only seed 0 was kept, so compare that one. They read
+    # different tensors, so each needs its own loader and scorer: the GRU is a trial model on
+    # 40 bins x 280 features, the MLP a window model on 280 features x 10 lags.
+    legacy = {
+        'gru': dict(model=U.GRURegressor(280), path='results/checkpoints/gru_seed0.pt',
+                    parquet='results_gru.parquet',
+                    datasets=(lambda: U.load_gru_datasets(U.RAW_VARIANT, sessions)[2]),
+                    score=lambda model, data: U.evaluate_gru(model, 0, data, 'raw')),
+        'mlp': dict(model=U.MLPRegressor(280 * (U.LAG_COUNT + 1)),
+                    path='results/checkpoints/mlp_seed0.pt', parquet='results_mlp.parquet',
+                    datasets=(lambda: {s: U.load_query_and_off_windows(s, U.RAW_VARIANT,
+                                                                       U.LAG_COUNT)
+                                       for s in sessions}),
+                    score=lambda model, data: U.evaluate_mlp(model, 0, data, 'raw')),
+    }
+    import torch
+    for method, entry in legacy.items():
+        path = entry['path']
         full = os.path.join(U.PROJECT_ROOT, path)
-        reference = pd.read_parquet(os.path.join(U.RESULTS_DIR, parquet))
+        reference = pd.read_parquet(os.path.join(U.RESULTS_DIR, entry['parquet']))
         expected = reference[reference.seed == 0]
         row = dict(checkpoint=path, available=os.path.isfile(full),
                    expected_on=expected.r2_ave.mean(), expected_off=expected.r2_off_ave.mean(),
                    reloaded_on=np.nan, reloaded_off=np.nan, max_abs_session_difference=np.nan)
         if row['available'] and not skip:
-            import torch
+            model = entry['model']
             model.load_state_dict(torch.load(full, map_location='cpu', weights_only=True))
             model.eval()
-            scored = pd.DataFrame([U.score_trial_model(model, s, method, 'raw', 0, q, off)
-                                   for s, (q, off) in test.items()])
+            scored = pd.DataFrame(entry['score'](model, entry['datasets']()))
             row['reloaded_on'] = scored.r2_ave.mean()
             row['reloaded_off'] = scored.r2_off_ave.mean()
             row['max_abs_session_difference'] = float(
@@ -200,28 +225,35 @@ def audit_checkpoints(test, amplified, cleaned, skip):
                  - expected.set_index('session').r2_ave).abs().max())
         rows.append(row)
 
-    # Ridge: the saved npz holds coefficients, so score it directly on one draw.
+    # Ridge: the npz holds the OFF decoder's coefficients, so replay evaluate_ridge and
+    # compare its no-adaptation rows (k=0, draw=0) against the cached table.
     if not skip:
         draws = U.load_json(U.DRAWS_PATH)
-        session = list(draws['sessions'])[0]
-        _, _, draw = next(U.iter_draws(draws, session))
-        for variant, label, path in (('raw', 'ridge_raw', 'results/checkpoints/ridge_raw.npz'),
-                                     ('parrm', 'ridge_parrm', 'results/checkpoints/ridge_parrm.npz')):
+        reference = pd.read_parquet(os.path.join(U.RESULTS_DIR, 'results_ridge_knn.parquet'))
+        for variant, label, path in (
+                (U.RAW_VARIANT, 'ridge_raw', 'results/checkpoints/ridge_raw.npz'),
+                (U.PARRM_VARIANT, 'ridge_parrm', 'results/checkpoints/ridge_parrm.npz')):
             full = os.path.join(U.PROJECT_ROOT, path)
+            method = f'ridge_{label.split("_")[-1]}_off'
+            expected = reference[reference.method == method]
             row = dict(checkpoint=path, available=os.path.isfile(full),
-                       expected_on=np.nan, expected_off=np.nan,
+                       expected_on=expected.r2_ave.mean(),
+                       expected_off=expected.r2_off_ave.mean(),
                        reloaded_on=np.nan, reloaded_off=np.nan, max_abs_session_difference=np.nan)
             if row['available']:
-                saved = np.load(full)
-                X, y = U.drawn_trial_windows(session, draw, variant, U.LAG_COUNT)
-                query = U.query_trial_windows(session, draw, variant, U.LAG_COUNT)
-                off = U.windows_from_valid_bins(
-                    U.load_same_day_off_dataset(session, variant, U.LAG_COUNT))
-                model = U.RidgeRegressor(float(saved['alpha']))
-                model.coefficients, model.intercept = saved['coefficients'], saved['intercept']
-                scored = U.score_window_decoder(model, session, 'ridge', label, query, off)
-                row['reloaded_on'] = scored['r2_ave']
-                row['reloaded_off'] = scored['r2_off_ave']
+                landscape = np.load(full)
+                model = U.RidgeRegressor(float(landscape['alpha']))
+                model.coefficients = landscape['coefficients']
+                model.intercept = landscape['intercept']
+                replayed = pd.DataFrame(U.evaluate_ridge(
+                    draws, model, float(landscape['alpha']), variant,
+                    label.split('_')[-1], U.LAG_COUNT, sorted(sessions)))
+                replayed = replayed[replayed.method == method]
+                row['reloaded_on'] = replayed.r2_ave.mean()
+                row['reloaded_off'] = replayed.r2_off_ave.mean()
+                row['max_abs_session_difference'] = float(
+                    (replayed.set_index('session').r2_ave
+                     - expected.set_index('session').r2_ave).abs().max())
             rows.append(row)
 
     # The new arms: recorded, PARRM-cleaned and 10x, for the two ensemble rows.

@@ -7,6 +7,10 @@ training split and never see the calibration trials.
 
 `r2_off` is the same decoder applied to that day's no-stimulation session, which sets the ceiling.
 
+For the paired GRU-versus-EEGNet comparison, with session-bootstrap CIs, a checkpoint audit and
+the mechanism behind the frequency split, see [decoder-comparison.md](decoder-comparison.md).
+That page supersedes the ranking claims below wherever the two disagree.
+
 ## Main table (mean over sessions × draws × seeds)
 
 | Method | k | 3 Hz R² | 20 Hz R² | off 3 Hz | off 20 Hz |
@@ -20,9 +24,15 @@ training split and never see the calibration trials.
 | | 5 | 0.005 | 0.010 | 0.004 | 0.008 |
 | | 10 | 0.017 | 0.030 | 0.011 | 0.021 |
 | | 20 | 0.029 | 0.051 | 0.021 | 0.032 |
-| MLP (2 hidden, 90 k params) | 0 | 0.037 | −0.023 | 0.047 | 0.041 |
+| MLP (2 hidden, 90 k params) | 0 | 0.037† | −0.023† | 0.047 | 0.041 |
 | EEGNet (5.9 k params) | 0 | **−0.165** | 0.045 | 0.053 | 0.024 |
 | GRU | 0 | 0.026 | 0.030 | 0.036 | 0.029 |
+
+† The MLP weights in `results/checkpoints/mlp_seed0.pt` do not reproduce this row: rescoring
+them gives +0.026 ON and the worst per-session gap is 0.44, and only seed 0 was kept. Treat
+these two cells as "the cached run" until the MLP is retrained. The GRU row has the same
+problem at a smaller scale (0.031 reloaded vs 0.031 cached, worst session gap 0.032). The
+audit is in `task4/results/checkpoint_audit.csv`.
 
 The EEGNet row is the run whose weights are in `task4/checkpoints/`: reloading them reproduces
 `task4/results/task4_2_eegnet_off.csv` exactly. `results/table_main.csv` and earlier drafts of

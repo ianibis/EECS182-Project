@@ -35,7 +35,7 @@ def read_config():
 
 
 CFG = read_config()
-C, T, N = 35, 2000, 40
+C, T, N, V = 35, 2000, 40, 2
 F = int(CFG["temporal_filters"])
 D = int(CFG["depth_multiplier"])
 K1 = int(CFG["kernel_samples"])
@@ -49,9 +49,10 @@ PAD = 12
 WIDTH = 2 * COL_W + GAP + 2 * PAD
 SHEET_DX, SHEET_DY = 4, -3
 BATCH_SHEETS = 3
+STACK_LIFT = (BATCH_SHEETS - 1) * -SHEET_DY   # back sheets sit this far above the front one
+ROW_GAP = 18                                  # clear space between two rows, all of it arrow
 GRAPH_W = 96.0
 FACE_H = 62.0
-TEXT_W = 118          # name/shape block beside the sheet
 
 COLORS = {
     "io": ("#e7f0ff", "#2f6fdb"),
@@ -62,36 +63,36 @@ COLORS = {
     "head": ("#ffe9e9", "#c62828"),
 }
 
-# name, symbolic shape, one-line description, (channels, samples), kind
+# name, symbolic shape, (channels, samples), kind. What each stage computes is in the
+# report text, not the figure.
 STAGES = [
-    ("input", "(B, C, T)", "LFP at 1 kHz", C, T, "io"),
-    ("temporal conv", "(B, F, C, T)", f"{F} filters, kernel 1 x {K1}, causal", C, T, "conv"),
-    ("batch norm", "(B, F, C, T)", f"{F} channels", C, T, "norm"),
-    ("spatial conv", "(B, FD, 1, T)", f"depthwise {C} x 1, L2 renormalised", 1, T, "conv"),
-    ("batch norm + ELU", "(B, FD, 1, T)", f"{F2} maps", 1, T, "act"),
-    ("pool + dropout", "(B, FD, 1, T/2)", f"1 x {P} pool, p = {DO}", 1, T // P, "pool"),
-    ("separable conv", "(B, FD, 1, T/2)", f"1 x {K2} depthwise + 1 x 1 pointwise", 1, T // P,
-     "conv"),
-    ("batch norm + ELU", "(B, FD, 1, T/2)", f"{F2} maps", 1, T // P, "act"),
-    ("pool + dropout", "(B, FD, 1, N)", f"1 x {Q} to {N} bins, p = {DO}", 1, N, "pool"),
-    ("regression head", "(B, N, 2)", f"1 x 1 conv, {F2} to 2", 2, N, "head"),
-    ("output", "(B, N, 2)", "vx, vy per 50 ms bin", 2, N, "io"),
+    ("input", "(B, C, T)", C, T, "io"),
+    ("temporal conv", "(B, F1, C, T)", C, T, "conv"),
+    ("BatchNorm2d", "(B, F1, C, T)", C, T, "norm"),
+    ("spatial conv", "(B, F2, 1, T)", 1, T, "conv"),
+    ("BatchNorm2d + ELU", "(B, F2, 1, T)", 1, T, "act"),
+    (f"avg pool, p={DO:.2f}", "(B, F2, 1, T/2)", 1, T // P, "pool"),
+    ("separable conv", "(B, F2, 1, T/2)", 1, T // P, "conv"),
+    ("BatchNorm2d + ELU", "(B, F2, 1, T/2)", 1, T // P, "act"),
+    (f"avg pool, p={DO:.2f}", "(B, F2, 1, N)", 1, N, "pool"),
+    ("regression head", "(B, N, V)", V, N, "head"),
+    ("output", "(B, N, V)", V, N, "io"),
 ]
-SPLIT = 6
+SPLIT = 5
 
 
 def face_size(channels, samples):
-    # Compressed log range: the true extent ratio is 2000:40 by 35:1, which would leave
-    # the late stages as slivers. Keeping every sheet within 55-100 % of the frame makes
-    # each stage legible at full page width without pretending the sizes are to scale.
-    w = GRAPH_W * (0.55 + 0.45 * math.log10(max(samples, 10)) / math.log10(T))
-    h = FACE_H * (0.40 + 0.60 * math.log10(max(channels, 1)) / math.log10(C))
-    return max(w, 14.0), max(h, 11.0)
+    # Sheet size tracks the real extent of the stage: the log keeps 2000:40 samples and
+    # 35:1 channels on one scale, so an input sheet is full height and a 1 x 40 map is a
+    # thin strip. Late stages are floored only enough to stay visible.
+    w = GRAPH_W * math.log10(max(samples, 10)) / math.log10(T)
+    h = FACE_H * math.log10(max(channels, 1)) / math.log10(C)
+    return max(w, 14.0), max(h, 6.0)
 
 
 def row_h(ch, smp):
     _, h = face_size(ch, smp)
-    return max(h, 34.0) + 12
+    return max(h, 34.0) + ROW_GAP
 
 
 def col_x(col):
@@ -123,11 +124,11 @@ def build():
         y = top0
         for idx in group:
             ys[idx] = y
-            y += row_h(*STAGES[idx][3:5])
-        bottoms[col] = y - 12
+            y += row_h(*STAGES[idx][2:4])
+        bottoms[col] = y - ROW_GAP
 
-    body = []
-    for idx, (name, shape, sub, ch, smp, kind) in enumerate(STAGES):
+    body, arrows = [], []
+    for idx, (name, shape, ch, smp, kind) in enumerate(STAGES):
         col = 0 if idx < SPLIT else 1
         gx = col_x(col)
         y = ys[idx]
@@ -146,32 +147,42 @@ def build():
         body.append(f'<text x="{tx:.1f}" y="{mid + 8:.1f}" class="shape">{shape}</text>')
         if idx and not (idx == SPLIT):
             prev = ys[idx - 1]
-            _, ph = face_size(*STAGES[idx - 1][3:5])
-            px = gx + 3
-            body.append(f'<line x1="{px}" y1="{prev + max(ph, 34.0) + 2:.1f}" '
-                        f'x2="{px}" y2="{y - 3:.1f}" class="arrow" marker-end="url(#head)"/>')
+            _, ph = face_size(*STAGES[idx - 1][2:4])
+            px = gx + max(w, 34.0) / 2
+            # touch the bottom of the previous sheet and the top of this one
+            arrows.append(f'<line x1="{px}" y1="{prev + ph:.1f}" '
+                          f'x2="{px}" y2="{y:.1f}" class="arrow" '
+                          f'marker-end="url(#head)"/>')
 
-    # serpentine wrap between columns: out the bottom of the last left box, across the
-    # gutter, then down into the top of the first right-column box at its left edge
-    lpx = col_x(0) + 3
+    # serpentine wrap between columns: out the bottom of the last left box, down and
+    # across the gutter, up a lane clear of both columns, then into the left edge of the
+    # first right-column sheet
+    lpx = col_x(0) + face_size(*STAGES[SPLIT - 1][2:4])[0] / 2
     py = ys[SPLIT - 1]
-    _, ph = face_size(*STAGES[SPLIT - 1][3:5])
+    _, ph = face_size(*STAGES[SPLIT - 1][2:4])
     seg_bottom = bottoms[0] + 8
-    rpx = col_x(1) + 3
-    top_right = ys[SPLIT]
-    body.append(f'<path d="M {lpx} {py + max(ph, 34.0) + 2:.1f} V {seg_bottom:.1f} '
-                f'H {rpx:.1f} V {top_right - 11:.1f}" class="arrow" fill="none"/>')
-    body.append(f'<line x1="{rpx:.1f}" y1="{top_right - 11:.1f}" x2="{rpx:.1f}" '
-                f'y2="{top_right - 3:.1f}" class="arrow" marker-end="url(#head)"/>')
+    lane = col_x(1) - 14          # inside the gutter, clear of both columns
+    _, entry_h = face_size(*STAGES[SPLIT][2:4])
+    entry = ys[SPLIT] + entry_h / 2   # the sheet's own middle, not the row box's
+    arrows.append(f'<path d="M {lpx} {py + ph:.1f} V {seg_bottom:.1f} '
+                  f'H {lane:.1f} V {entry:.1f}" class="arrow" fill="none"/>')
+    arrows.append(f'<line x1="{lane:.1f}" y1="{entry:.1f}" x2="{col_x(1) - 2:.1f}" '
+                  f'y2="{entry:.1f}" class="arrow" marker-end="url(#head)"/>')
 
     top = bottoms[0] + 22
     footer = [f'<line x1="{PAD}" y1="{top:.1f}" x2="{WIDTH - PAD}" y2="{top:.1f}" '
               'stroke="#eaeef2" stroke-width="1"/>']
     oy = top + 16
     footer.append(f'<text x="{PAD}" y="{oy:.1f}" class="var">B batch     C {C} channels'
-                  f'     T {T} samples     N {N} bins     F {F}     D {D}     '
-                  f'K1 {K1}     K2 {K2}     p {DO}</text>')
-    total = oy + 16
+                  f'     T {T} samples     N {N} bins     V {V}     F1 {F}     D {D}     '
+                  f'F2 {F2}     K1 {K1}     K2 {K2}     P {P}     Q {Q}     p {DO}</text>')
+    footer.append(f'<text x="{PAD}" y="{oy + 14:.1f}" class="note">'
+                  'normalization: fixed input z-score, then BatchNorm2d after each conv; pooling is average</text>')
+    footer.append(f'<text x="{PAD}" y="{oy + 27:.1f}" class="note">'
+                  'optimizer: Muon on weight matrices + Adam on biases and BatchNorm affine parameters</text>')
+    footer.append(f'<text x="{PAD}" y="{oy + 40:.1f}" class="note">'
+                  'all convolutions are causal (left-only zero padding)</text>')
+    total = oy + 52
 
     return "\n".join([
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {total:.0f}" '
@@ -179,9 +190,9 @@ def build():
         f'font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">',
         STYLE,
         f'<text x="{PAD}" y="14" class="head">CausalEEGNet: one forward pass</text>',
-        f'<text x="{PAD}" y="27" class="note">two columns, left to right; sheets are the B '
-        f'samples of one batch, sized to the C x T extent of that stage</text>',
-        *body, *footer, "</svg>",
+        f'<text x="{PAD}" y="27" class="note">read down the left column, then the right; '
+        f'sheets are the B samples of one batch, sized to the C x T extent of that stage</text>',
+        *body, *arrows, *footer, "</svg>",
     ])
 
 

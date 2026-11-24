@@ -10,28 +10,77 @@
 
 \begin{document}\maketitle
 
-To obtain a baseline, we implement a Masked causal EEGNet from \cite{braindecode2020}, as well as a Ridge linear regression model to predict fingertip velocities from a LFP brain signal sampled at 1~kHz. We trained the models on stimulation-free recordings. We also tested it on stimulated recordings, where the stimulator's artifact dominates the signal. Lastly, we trained both models on semisynthetic data by adding ~10x noise to LFP for unstimulated trials.
-
-\subsection{Dataset and Preprocessing}\label{sec:data}
-
-\paragraph{Recordings and targets.} 
-We decode 2D index-fingertip velocity $(v_x, v_y)$, tracked via DeepLabCut, from local field potentials (LFPs) recorded at 1~kHz across 35 motor cortex electrodes in a rhesus macaque (Butters). Each channel is centred on its recording-specific median and scaled by its median absolute deviation (MAD) into robust $z$-units, preventing high-amplitude stimulation transients from distorting channel statistics (Appendix~\ref{app:artifact}).
-
-\paragraph{Stimulation artifact and test splits.} 
-Stimulation delivers a 3.5~kHz carrier amplitude-modulated at 3~Hz (333~ms period) or 20~Hz (50~ms period). Within each 50~ms decoding bin recordings, we approximate this residual artifact as a constant offset for 20~Hz, and a periodic sawtooth across ~6.7 bins for 3~Hz. Trials are partitioned by recording day into fixed train, validation, and test splits. The test set comprises 14 stimulation-on sessions across 5 days (holding 1, 3, 3, 3, and 4 sessions; three days at 3~Hz and two at 20~Hz), paired with one stimulation-off reference recording per day. Evaluating models on both stimulated sessions and their same-day unstimulated references separates genuine kinematic decoding from artifact overfitting, with scores averaged per day to account for shared clean references.
+To obtain a baseline for the transformer models, we train a causal EEGNet and a ridge decoder on stimulation-free LFP, then test zero-shot on stimulated trials and after supervised recalibration. The main text reports the EEGNet baseline; appendices give the data path, architecture and sweep details, per-day results, PARRM, and the stimulation and tone analyses.
 
 \setcounter{section}{3}
-\section{Task 4: Decoding Movement Under Stimulation}\label{sec:task4}
+\section{Task 4 baseline: causal EEGNet for movement decoding under stimulation}\label{sec:task4}\label{sec:eegnet}
+
+We decode 2D fingertip velocity $(v_x,v_y)$ from 35 LFP channels in one macaque. Each trial is a 2.0~s window with $N=40$ bins of 50~ms ($T=2{,}000$ samples at 1~kHz), and channels are robust $z$-scored. Days are split 18/3/5 into train/validation/test; the test set is 14 stimulation-on sessions across five days, each paired with a same-day stimulation-off reference. Appendix~\ref{app:data} gives the storage, split, and batching reference.
+
+\paragraph{What EEGNet is.}
+EEGNet is a compact convolutional network for EEG. A temporal convolution slides a learned $1\times K_1$ filter ($K_1=500$ samples, 500~ms) over all $C=35$ channels and produces $F_1=8$ feature maps; a depthwise spatial convolution mixes electrodes within each map ($D=2$, $F_2=16$); a separable convolution ($K_2=62$) filters each map in time; average pooling by $P=2$ and $Q=25$ reduces $T=2{,}000$ samples to $N=40$ bins; and a $1\times1$ head outputs $V=2$ velocities per bin. We make both convolutions causal (left-only zero padding) and replace the classification head with this regression head. The model has 5{,}922 parameters (Fig.~\ref{fig:arch}).
+
+\begin{figure}[tbp]\centering
+\includegraphics[width=0.68\textwidth]{eegnet_block_diagram.pdf}
+\caption{Causal EEGNet forward pass (read down the left column, then the right). Stacked sheets denote batch $B$; each sheet is drawn at the real extent of its stage, so the height falls from $C=35$ channels to one and the width from $T=2{,}000$ samples to $N=40$ 50-ms bins and finally $(B,N,V)$. Pooling is average ($P=2$, then $Q=25$); dropout is $p=0.25$; all convolutions are causal.}\label{fig:arch}
+\end{figure}
+
+\paragraph{How it was trained.}
+We train on 560 stimulation-off trials from 42 sessions and validate on 150 trials from 9 sessions, with batch size 16, MSE on valid bins, dropout 0.25, and early stopping (patience 20 epochs, up to 200). Muon updates the 2-D weight matrices and Adam the 1-D vectors. We run five seeds and average their predictions for the ensemble. Appendix~\ref{app:arch} gives the loss, causal-padding, and optimizer details.
+
+\paragraph{Hyperparameter sweep.}
+An eight-configuration sweep over temporal kernel length, depth multiplier, and dropout (Table~\ref{tab:sweep} in Appendix~\ref{app:arch}) selected a 500~ms kernel, $D=2$, and dropout 0.25, with clean validation $R^2=+0.1463$ versus $+0.1351$ for the default. The $+0.011$ margin equals the cross-seed standard deviation, so the default is statistically indistinguishable (Appendix~\ref{app:arch}).
+
+\paragraph{Final performance.}
+Table~\ref{tab:main} reports axis-averaged test $R^2$ on the five held-out days. Without stimulated labels, single-seed EEGNet reaches $+0.021$ on clean input but $-0.192$ under stimulation; the five-seed ensemble raises these to $+0.070$ and $-0.134$. Adding synthetic tones during clean training prevents the collapse ($+0.032$ stimulated) at a cost in clean accuracy ($+0.033$). Per-day results, the ridge comparison, and PARRM are in Appendices~\ref{app:results} and~\ref{app:parrm}.
+
+\begin{table}[htbp]\centering
+\caption{Mean test $R^2$ (axis-averaged over $v_x,v_y$; dimensionless) across the 5 held-out days and 5 seeds, with day-level bootstrap 95\% CIs. The ensemble averages the five predictions before scoring.}
+\small
+\begin{tabular}{@{}lcc@{}}\toprule
+Decoder (trained without stimulated labels) & Clean test $R^2$ & Stimulated test $R^2$ \\ \midrule
+EEGNet, single-seed mean (5 seeds) & $+0.021\ [-0.053,+0.087]$ & $-0.192\ [-0.383,-0.001]$ \\
+EEGNet, 5-seed prediction ensemble & $+0.070\ [+0.013,+0.118]$ & $-0.134\ [-0.326,+0.059]$ \\
+EEGNet + synthetic tones (App.~\ref{app:tones}) & $+0.033\ [+0.008,+0.058]$ & $+0.032\ [-0.005,+0.072]$ \\
+\bottomrule\end{tabular}\label{tab:main}
+\end{table}
+
+\appendix
+\section{Data layout, splits, and batching}\label{app:data}
+
+\subsection{Dataset and preprocessing}\label{sec:data}
+\paragraph{Recordings and targets.} 
+We decode 2D index-fingertip velocity $(v_x, v_y)$, tracked via DeepLabCut, from local field potentials (LFPs) recorded at 1~kHz across 35 motor cortex electrodes in a rhesus macaque (Butters). The 35 channels are fixed across sessions by a mask applied to the 64 recorded rows (Appendix~\ref{app:data}). Each channel is centred on its median and scaled by its median absolute deviation (MAD) into robust $z$-units over the first go cue minus 1~s to the last reward plus 1~s, preventing high-amplitude stimulation transients from distorting channel statistics (Appendix~\ref{app:artifact}). A trial window is 2.0~s long: $N=40$ bins of 50~ms, with 50 LFP samples per bin at roughly 1~kHz ($T=2{,}000$ samples).
+
+\paragraph{Stimulation artifact and test splits.} 
+For the Stimulation-On trials, we apply a 3.5~kHz carrier amplitude-modulated at either 3~Hz (333~ms period) or 20~Hz (50~ms period). Within each 50~ms decoding bin recordings, we approximate this residual artifact as a constant offset for 20~Hz, and a periodic sawtooth across ~6.7 bins for 3~Hz. Trials are partitioned by recording day into fixed train, validation, and test splits. The test set comprises 14 stimulation-on sessions across 5 days (holding 1, 3, 3, 3, and 4 sessions; three days at 3~Hz and two at 20~Hz), paired with one stimulation-off reference recording per day. The 14 ON sessions share the five same-day OFF references, and evaluating models on both separates genuine kinematic decoding from artifact overfitting, with scores averaged per day to account for shared clean references. The five-day test split is fixed by \texttt{splits.json} (18 train, 3 validation, 5 test days), so every per-day figure in the main text and Appendix~\ref{app:results} uses the same five held-out days.
+
+
+
+Table~\ref{tab:datapipeline} and Fig.~\ref{fig:datapipeline} give the complete storage, parsing, split, and batching reference for the numbers in the main text and Appendices~\ref{app:arch}--\ref{app:parrm}. The table is generated from the same code and metadata that produce the experiments, so its dimensions cannot drift from \texttt{task4/utils.py}, \texttt{EECS182\_NHP\_data\_loader.py}, \texttt{splits.json}, or \texttt{data/manifest.csv}. The key symbols are $C=35$ channels, $T=2{,}000$ samples per trial, $N=40$ 50-ms bins per trial, $V=2$ velocity components, $B$ batch size, $F_1=8$ temporal filters, $D=2$, $F_2=F_1D=16$, $K_1=500$, $K_2=62$, $P=2$, $Q=25$, $G=8$ cached features per bin, and $L=9$ causal lags.
+
+\input{data_pipeline_table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\textwidth]{data_pipeline.pdf}
+\caption{Task 4 data path. Column 1 is what is stored; column 2 is how each file becomes a tensor; column 3 is how the 26 days, 70 sessions, 14 test ON sessions, 5 shared OFF references, 20-trial pool, 30-trial query, and 434 draws are batched. The callouts define the axis-averaged $R^2$, the five-seed prediction ensemble, the synthetic tone augmentation, and why every per-day figure uses the same five test days.}\label{fig:datapipeline}
+\end{figure}
+
+The test split is five days by construction, not a plotting choice: \texttt{splits.json} assigns 18 days to train, 3 to validation, and 5 to test. The 5 test days contain 14 stimulation-ON sessions and 5 same-day OFF references; the 14 ON sessions map many-to-one onto the OFF references. The calibration pool is blocks 1--2 (20 included ON trials) and the query is blocks 3--5 (30 included ON trials). For $k=2,5,10$ the draws are 10 independent distinct subsets per session; for $k=20$ the full pool gives one draw, for 434 partitions total. OFF controls use all 50 included OFF trials, not the 30-trial ON query.
+
+
+
+\section{Calibration draws}\label{app:draws}
 
 \subsection{Calibration draw}\label{sec:draws}
 
 To ensure fair comparisons across methods, we generate fixed data partitions once and evaluate all models on identical splits.
 
 \paragraph{Trial partitioning.} 
-Each of the 14 test sessions contains 50 stimulation-on trials, where each trial consists of one pass through the five-target sequence. We partition each session chronologically: the first two 10-trial blocks (20 trials) form the calibration pool, and the final three blocks (30 trials) form a held-out query set. Methods may train on $k$ trials from the calibration pool, while query labels remain strictly unseen during adaptation. Fixing the query set at the end of the session mirrors online deployment—where initial calibration precedes decoding—and ensures that performance changes across $k$ isolate the effect of label quantity rather than test-set variation.
+Each of the 14 test ON sessions contains 50 stimulation-on trials, where each trial consists of one pass through the five-target sequence. We partition each session chronologically: the first two 10-trial blocks (20 included trials; raw trial IDs are not contiguous because unrewarded trials are excluded) form the calibration pool, and the final three blocks (30 included trials) form a held-out query set. Methods may train on $k$ trials from the calibration pool, while query labels remain strictly unseen during adaptation. Fixing the query set at the end of the session mirrors online deployment—where initial calibration precedes decoding—and ensures that performance changes across $k$ isolate the effect of label quantity rather than test-set variation.
 
 \paragraph{Sampling protocol.} 
-For each session and calibration size $k \in \{2, 5, 10, 20\}$, we sample distinct subsets of $k$ trials without replacement from the 20-trial calibration pool (Table~\ref{tab:draws}). For $k \in \{2, 5, 10\}$, we sample 10 unique subsets per session to reduce variance from individual trial selections without exhaustively enumerating all $\binom{20}{k}$ combinations (up to 184,756 at $k=10$). For $k=20$, the calibration set encompasses the entire pool, yielding a single partition per session and 434 total partitions across the dataset.
+For each session and calibration size $k \in \{2, 5, 10, 20\}$, we sample independent distinct subsets of $k$ trials without replacement from the 20-trial calibration pool (Table~\ref{tab:draws}). The subsets are not nested across $k$: each $k$ is drawn separately. For $k \in \{2, 5, 10\}$, we sample 10 unique subsets per session to reduce variance from individual trial selections without exhaustively enumerating all $\binom{20}{k}$ combinations (up to 184,756 at $k=10$). For $k=20$, the calibration set encompasses the entire pool, yielding a single partition per session and 434 total partitions across the dataset.
 
 \begin{table}[htbp]
 \centering
@@ -50,42 +99,54 @@ $k$ & Query trials scored & Draws per session & Total partitions \\
 \end{table}
 
 \paragraph{Reproducibility and experimental control.} 
-Partitions are generated using a fixed random seed (\texttt{20261106}) and saved to \texttt{draws.json} (summarised in \texttt{task4\_1\_draws\_summary.csv}), which stores each session's stimulation-on trials, calibration pool, fixed query set, same-day stimulation-off reference, and sampled subsets. Evaluating all models on these shared partitions isolates label efficiency as the independent variable: zero-shot adaptation (\S\ref{sec:eegnet}) corresponds to $k=0$, whereas supervised refitting (\S\ref{sec:parrm}) uses the $k$ calibration trials.
+Partitions are generated using a fixed random seed (\texttt{20261106}) and saved to \texttt{draws.json} (summarised in \texttt{task4\_1\_draws\_summary.csv}), which stores each session's stimulation-on trials, calibration pool, fixed query set, same-day stimulation-off reference, and sampled subsets. The query is fixed to blocks 3--5 for every draw, so the 30 scored trials are identical across $k$ and across methods. Evaluating all models on these shared partitions isolates label efficiency as the independent variable: zero-shot adaptation (\S\ref{sec:eegnet}) corresponds to $k=0$, whereas supervised refitting (\S\ref{sec:parrm}) uses the $k$ calibration trials.
 
-\subsection{EEGNet regression decoder (braindecode) on 1 kHz LFP, predicting kinematics per 50 ms window, trained on stimulation off trials}\label{sec:eegnet}
 
-We train braindecode's \texttt{EEGNet}, a small convolutional network, to map a voltage window to a velocity sequence. A convolution slides a short learned filter along the signal and records the match at each position; one layer runs along time and learns temporal patterns, one across electrodes and learns which channels move together. The published version predicts one class per window, so it needs two changes. The network never sees a stimulated trial, so it is the no-adaptation reference.
-\subsubsection{Causal EEGNet architecture}\label{sec:arch}
+
+\section{EEGNet architecture and training}\label{app:arch}
+
+\subsection{Causal EEGNet architecture}\label{sec:arch}
+We adapt \texttt{braindecode}'s EEGNet into a causal, per-bin regressor (5{,}922 parameters in the forward pass, stored as 6{,}005 scalars because the unit-norm spatial filter is parametrised by a direction and a length; Fig.~\ref{fig:arch}). The Causal EEGNet is an eleven-stage CNN with ELU activations.
+
+The \emph{temporal convolution} slides a learned $1\times K_1$ filter ($K_1=500$, i.e.\ 500~ms) along time and reads all $C=35$ channels at once, producing $F_1=8$ feature maps; this is the stage that learns the shape of a temporal pattern. The \emph{spatial convolution} is depthwise with a $C\times1$ kernel, so each map becomes its own weighted mix of electrodes rather than a mix of maps; with depth multiplier $D=2$ this gives $F_2=F_1D=16$ maps and collapses the channel axis to one row. The \emph{separable convolution} pairs a $1\times K_2$ depthwise filter ($K_2=62$) along time with a $1\times1$ pointwise convolution, filtering each map's time course and then recombining across maps. The two \emph{pool\,+\,(dropout)} stages are \emph{average} pooling by $P=2$ and then by $Q=25$ with dropout $p=0.25$, which is what sets the output rate. The \emph{regression head} is a $1\times1$ convolution from $F_2=16$ maps to $V=2$ values, so the output is one $(v_x,v_y)$ pair per bin. Setting \texttt{final\_conv\_length=1} with two output channels and pooling factors of 2 and 25 maps $T=2{,}000$ input samples onto $N=40$ 50-ms velocity bins, one velocity pair per step. Fig.~\ref{fig:conv} draws the left padding and the kernel at the first, middle, and last output positions.
 
 \begin{figure}[htbp]\centering
-\includegraphics[width=0.66\textwidth]{eegnet_block_diagram.pdf}
-\caption{Causal EEGNet forward pass (left to right). Stacked sheets denote batch size $B$ across spatial dimensions; grey labels indicate tensor shapes.}\label{fig:arch}
+\includegraphics[width=\textwidth]{causal_convolution.png}
+\caption{One causal temporal convolution on a single 1D LFP trial. The input is left-padded with $K_1-1=499$ zeros (grey); the $1\times K_1$ kernel ($K_1=500$ samples, 500~ms) slides left to right. The first output $y[0]$ sees 499 zeros plus $x[0]$; $y[250]$ sees 249 zeros plus $x[0..250]$; after 500 samples the kernel is fully inside the signal. No output sees a future sample. The same left-only scheme is used for the $K_2=62$ separable convolution.}\label{fig:conv}
 \end{figure}
 
-We adapt \texttt{braindecode}'s EEGNet into a causal, per-bin regressor (6{,}005 parameters; Fig.~\ref{fig:arch}). Setting \texttt{final\_conv\_length=1} with two output channels and temporal pooling factors of 2 and 25 maps 2{,}000 input samples onto 40 50-ms velocity bins $(v_x, v_y)$. Replacing symmetric padding with left-only zero-padding before unpadded convolutions ensures each prediction depends strictly on current and past samples. Spatial filters are projected onto the unit $\ell_2$-sphere after every gradient step.
+BatchNorm2d follows each convolution; it is a normalisation layer, not an optimizer. The two optimization algorithms are Muon, which updates the 2-D weight matrices via an orthogonalised update, and Adam, which updates the 1-D vectors (biases and the BatchNorm scale/shift parameters). Muon is not applied to 1-D vectors because the orthogonalisation is defined for matrices; Adam handles them at a small learning rate. The input z-score is a fixed per-channel preprocessing step, BatchNorm2d is a learned normalisation inside the network, and Muon/Adam are optimizers: they act at different stages and are not alternatives.
 
-\subsubsection{Training objective and hyperparameter selection}\label{sec:loop}
+Replacing symmetric padding with left-only zero-padding before unpadded convolutions ensures each prediction depends strictly on current and past samples: $K_1-1$ zeros are added at the early edge for the $1\times K_1$ filter and $K_2-1$ for the $1\times K_2$ one. Spatial filters are projected onto the unit $\ell_2$-sphere after every gradient step, so only their direction is learned and never their scale; every saved model sits at exactly 1.000.
 
+
+\subsection{Training objective and hyperparameter selection}\label{sec:loop}
 Because camera tracking intermittently drops the fingertip, we mask missing targets ($m_b=1$ on valid bins, $M=\sum_b m_b$) in the mean squared error loss and evaluate axis-averaged $R^2$:
 \begin{equation}
 L = \frac{1}{M}\sum_b m_b\,\lVert\hat{\mathbf{v}}_b-\mathbf{v}_b\rVert^2, \qquad
 R^2 = \tfrac{1}{2}\bigl(R^2_{v_x}+R^2_{v_y}\bigr), \quad
 R^2_{\mathrm{axis}} = 1 - \frac{\sum_b (y_b-\hat{y}_b)^2}{\sum_b (y_b-\bar{y})^2}.
+\label{eq:r2}
 \end{equation}
-Averaging $R^2$ across axes prevents the higher-variance component from dominating, where $R^2=0$ corresponds to predicting the bin mean $\bar{y}$.
+Averaging $R^2$ across axes prevents the higher-variance component from dominating, where $R^2=0$ corresponds to predicting the bin mean $\bar{y}$. All reported $R^2$ values use this axis average. A per-day value is the mean of the session-level $R^2$ over the sessions of that day, not a single pooled $R^2$ over all trials; on the test split there are five such days, so every per-day figure shows the same five days.
 
-\begin{figure}[htbp]\centering
-\includegraphics[width=0.72\textwidth]{eegnet_sampling.pdf}
-\caption{Training and evaluation pipeline. Data assembly (steps 1--2) is fixed; steps 3--7 repeat across five random seeds.}\label{fig:sampling}
-\end{figure}
+We train the models for up to 200 epochs on 560 trials (batch size 16; 35 updates/epoch) using Muon for matrix parameters and Adam for vectors under a cosine learning rate schedule decaying to 1\% (the split/batch steps are summarised in Appendix Fig.~\ref{fig:datapipeline}). We checkpoint the best validation $R^2$ across 3 held-out sessions and early-stop after 20 epochs without a $10^{-4}$ improvement. An eight-configuration sweep over temporal kernel length, depth multiplier, and dropout (Table~\ref{tab:sweep}) selects a 500~ms kernel, depth multiplier 2, and dropout 0.25 ($R^2 = +0.1463$), though its $+0.0112$ margin over the default ($+0.1351$) lies within cross-seed variance (\S\ref{sec:seeds}).
 
-Models train for up to 200 epochs on 560 trials (batch size 16; 35 updates/epoch) using Muon for matrix parameters and Adam for vectors under a cosine learning rate schedule decaying to 1\% (Fig.~\ref{fig:sampling}). We checkpoint the best validation $R^2$ across 3 held-out sessions and early-stop after 20 epochs without a $10^{-4}$ improvement. An eight-configuration sweep over temporal kernel length, depth multiplier, and dropout (Table~\ref{tab:sweep}) selects a 500~ms kernel, depth multiplier 2, and dropout 0.25 ($R^2 = +0.1463$), though its $+0.0112$ margin over the default ($+0.1351$) lies within cross-seed variance (\S\ref{sec:seeds}).
+For a trained model with per-bin prediction $\hat{\mathbf{v}}^{(s)}_b$ from seed $s$, the five-seed ensemble is
+\begin{equation}
+\hat{\mathbf{v}}^{\mathrm{ens}}_b = \frac{1}{5}\sum_{s=0}^{4}\hat{\mathbf{v}}^{(s)}_b,
+\label{eq:ensemble}
+\end{equation}
+so for every bin it takes the plain average of the five networks' predicted $(v_x,v_y)$ pairs, and the reported ensemble $R^2$ is computed on that averaged prediction against the targets. It is emphatically \emph{not} the average of the five per-seed $R^2$ scores, and the two quantities differ: averaging the predictions cancels part of each seed's error before the score is taken, whereas averaging the scores only reports the typical member. On clean input the single-seed mean is $+0.021$ and the ensemble of those same five seeds reaches $+0.070$; under stimulation the pair is $-0.192$ against $-0.134$ (Table~\ref{tab:main}). Because the seed-to-seed standard deviation is $\pm 0.011$ (\S\ref{sec:seeds}), comparable to the effects under study, the ensemble --- not any single run --- is the quantity we compare against other decoders.
+
+Tone augmentation (\texttt{+ tones}) adds a random-phase synthetic 3~Hz or 20~Hz sine to clean training trials, leaving target velocities unchanged, so the network meets interference at the frequencies stimulation injects without any stimulated label (Fig.~\ref{fig:toneaug}). Appendix~\ref{app:tones} gives the amplitude and channel-gain ranges.
 
 \begin{table}[htbp]\centering
-\caption{Architecture sweep ranked by clean validation $R^2$.}
+\caption{Architecture sweep ranked by clean validation $R^2$. The best setting, carried forward
+to \S\ref{sec:seeds}, is in bold.}
 \begin{tabular}{@{}lccccc@{}}\toprule
 Kernel & Depth & Dropout & Val.\ $R^2$ & Best epoch & Last epoch \\ \midrule
-500 ms  & 2 & 0.25 & $+0.1463$ & 48  & 68  \\ 
+\textbf{500 ms} & \textbf{2} & \textbf{0.25} & $\mathbf{+0.1463}$ & \textbf{48}  & \textbf{68}  \\ 
 250 ms  & 2 & 0.50 & $+0.1378$ & 108 & 128 \\
 500 ms  & 2 & 0.50 & $+0.1351$ & 56  & 76  \\ 
 250 ms  & 2 & 0.25 & $+0.1293$ & 70  & 90  \\
@@ -96,96 +157,113 @@ Kernel & Depth & Dropout & Val.\ $R^2$ & Best epoch & Last epoch \\ \midrule
 \bottomrule\end{tabular}\label{tab:sweep}
 \end{table}
 
-\subsubsection{Seed variance, ensembling, and baseline comparison}\label{sec:seeds}
 
-Across five random seeds (governing weight initialization, batch order, and dropout), validation $R^2$ reaches $0.136 \pm 0.011$ (individual runs: $0.146, 0.140, 0.122, 0.145, 0.125$; stopping between epochs 68 and 103; Fig.~\ref{fig:curves}). This $\pm 0.011$ standard deviation defines our experimental noise floor.
+\subsection{Seed variance and validation curves}\label{sec:seeds}
+Across five random seeds (governing weight initialization, batch order, and dropout), validation $R^2$ reaches $0.136 \pm 0.011$ (individual runs: $0.146, 0.140, 0.122, 0.145, 0.125$; stopping between epochs 68 and 103; Fig.~\ref{fig:curves}). This $\pm 0.011$ standard deviation defines our experimental noise floor. Fig.~\ref{fig:seedspread} shows the same five kept scores beside the tone-augmented runs.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.72\textwidth]{fig_seed_spread.png}
+\caption{Best validation $R^2$ for each of the five runs with and without tone augmentation. Each dot is one seed; the horizontal bar is the mean and the whisker $\pm1$ SD. The no-tone SD (0.011) is the resolution limit used in \S\ref{sec:seeds}; tone augmentation lowers the mean to $0.067\pm0.006$.}\label{fig:seedspread}
+\end{figure}
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_val_curves.png}
-\caption{Validation $R^2$ trajectories across five seeds (left; red dots mark early-stopped checkpoints) and kept checkpoint distribution with mean $\pm 1\;\mathrm{SD}$ (right).}\label{fig:curves}
+\caption{Validation $R^2$ during training for the five seeds. One colour per run; the bold black line is the epoch-wise mean of the five runs, the dashed line its 5-epoch running average, and the red dots mark the checkpoint each run kept. The five kept scores average $0.136\pm0.011$ (reported in the text).}\label{fig:curves}
 \end{figure}
 
-\paragraph{Zero-shot test performance and ensembling.}
-On held-out test days (2{,}000-sample day-level bootstrap 95\% CIs; Table~\ref{tab:main}, Fig.~\ref{fig:perday}), individual baseline runs average $+0.021$ $R^2$ on clean recordings but collapse to $-0.192$ under stimulation—19\% worse than predicting the mean velocity. Averaging bin-by-bin velocity predictions across all five checkpoints (\texttt{seed = -1}; Fig.~\ref{fig:ensemble}) cancels uncorrelated run variance, raising clean $R^2$ to $+0.070$ (largest gain $+0.077$ on day 250520, where run SD is 0.097) and stimulated $R^2$ to $-0.134$. Training with synthetic tone augmentation (Appendix~\ref{app:tones}) restores positive stimulated $R^2$ ($+0.032$) at the cost of lower clean accuracy ($+0.033$).
 
-\begin{table}[htbp]\centering
-\caption{Five-day mean test $R^2$ with 95\% bootstrap confidence intervals.}
-\begin{tabular}{@{}lcc@{}}\toprule
-Decoder & Clean input & Stimulated input \\ \midrule
-EEGNet, baseline (mean of 5) & $+0.021\ [-0.053,+0.087]$ & $-0.192\ [-0.383,-0.001]$ \\
-EEGNet, 5-seed ensemble      & $+0.070\ [+0.013,+0.118]$ & $-0.134\ [-0.326,+0.059]$ \\
-EEGNet + tones (App.~\ref{app:tones}) & $+0.033\ [+0.008,+0.058]$ & $+0.032\ [-0.005,+0.072]$ \\
-\bottomrule\end{tabular}\label{tab:main}
-\end{table}
+
+\section{Per-day test results}\label{app:results}
+
+\paragraph{Test performance without stimulated training data.}
+We first evaluate EEGNet models trained solely on unstimulated (clean) recordings, without any stimulation-on calibration trials (Table~\ref{tab:main}, Fig.~\ref{fig:perday}). Averaged across the 5 random seeds and 5 held-out test days, single-seed EEGNet achieves $+0.021$ $R^2$ on clean test days but drops to $-0.192$ under stimulation—19\% worse than predicting the session's mean velocity. Averaging the predicted velocity vectors across all 5 seeds at each 50-ms bin (\texttt{seed = -1}; Fig.~\ref{fig:ensemble}) reduces seed-to-seed prediction noise, raising the 5-day mean clean $R^2$ to $+0.070$ (gaining $+0.077$ on day 250520, where single-seed SD is 0.097) and stimulated $R^2$ to $-0.134$. Adding synthetic sine-wave interference during clean training (Appendix~\ref{app:tones}) prevents collapse under stimulation ($+0.032$ $R^2$), though clean $R^2$ drops to $+0.033$.
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_perday_r2.png}
-\caption{Per-day test $R^2$ on clean (left) and stimulated (right) recordings.}\label{fig:perday}
+\caption{Per-day test $R^2$ on the five held-out test days. (a) clean input, the same-day stimulation-off recording. (b) stimulated input, the stimulation-on recording. Each bar is the mean of the session-level $R^2$ over the sessions of that day: blue is the mean of the five seeds, orange is the five-seed prediction ensemble of \eqref{eq:ensemble}, green is a decoder trained with synthetic tones (Appendix~\ref{app:tones}). Every $R^2$ is the average of the $v_x$ and $v_y$ scores, and $0$ is the constant-mean predictor.}\label{fig:perday}
 \end{figure}
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_ensemble.png}
-\caption{Clean test $R^2$ for individual runs versus the five-seed prediction ensemble.}\label{fig:ensemble}
+\caption{Clean-input $R^2$ per held-out test day. All seeds are plotted at the same day position; colours and marker shapes distinguish them. The solid line joins the mean of the five seeds, and the black diamonds are the five-seed ensemble of \eqref{eq:ensemble}. The gap between the solid line and the diamonds is the gain from averaging predictions rather than scores. $R^2$ is the average of the $v_x$ and $v_y$ scores; $0$ is the constant-mean predictor.}\label{fig:ensemble}
 \end{figure}
 
-\paragraph{Physical error scale and comparison to ridge.}
-To ground $R^2$ in physical units, we compute Euclidean velocity RMSE ($\sqrt{e_{v_x}^2 + e_{v_y}^2}$ in cm/s) against a constant mean predictor ($\sqrt{2}\,\mathrm{SD}(\text{speed}) = 61\text{--}68\;\text{cm/s}$; Fig.~\ref{fig:r2rmse}, Table~\ref{tab:perday}). On clean recordings, the ensemble reduces five-day mean RMSE by 3\% (up to 7\% on day 250609: 63.2 versus 68.0~cm/s, $R^2 = +0.150$). Compared against the Task~3.1 ridge baseline—which uses causal local motor potentials and seven 1--200~Hz band powers across 10 lags—single-seed EEGNet trails by $-0.024$ $R^2$ overall (95\% CI $[-0.119, +0.047]$), outperforming ridge on 2 of 5 days and leading by $+0.017$ if single-session day 250520 ($-0.106$ vs.\ $+0.084$) is excluded.
+\paragraph{Velocity error in cm/s and comparison to ridge.}
+In physical units, predicting the constant mean velocity yields a Euclidean speed RMSE ($\sqrt{e_{v_x}^2 + e_{v_y}^2}$) of $61\text{--}68\;\text{cm/s}$ across the 5 test days (Fig.~\ref{fig:r2rmse}, Table~\ref{tab:perday}). On clean recordings, the 5-seed EEGNet ensemble lowers 5-day mean RMSE by 3\% (up to 7\% on day 250609: 63.2 vs.\ 68.0~cm/s, $R^2 = +0.150$). Compared against the Task~3.1 ridge baseline—which uses causal local motor potentials and seven 1--200~Hz band powers across 10 lags—single-seed EEGNet trails by $-0.024$ $R^2$ on average across the 5 days (95\% CI $[-0.119, +0.047]$), beating ridge on 2 of 5 days and leading by $+0.017$ if the single-session day 250520 ($-0.106$ vs.\ $+0.084$) is excluded.
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_r2_vs_rmse.png}
-\caption{Measured versus predicted $v_x$ on an example trial (left), prediction shrinkage scatter (middle), and $R^2$ versus RMSE relative to the mean predictor (right, grey crosses).}\label{fig:r2rmse}
+\caption{From $R^2$ to centimetres per second, all on clean input. (a) measured and predicted $v_x$ over the first 10~s of one held-out session. (b) predicted against measured velocity for every scored bin of that session, with the diagonal as a perfect forecast; the prediction is compressed toward zero, which is why $R^2$ stays positive while the scatter is wide. (c) per-day Euclidean velocity RMSE, $\sqrt{e_{v_x}^2+e_{v_y}^2}$, against the constant-mean predictor, whose error is $\sqrt{2}\,\mathrm{SD}(\text{speed})$. Day identity is on the axis because RMSE is not comparable across days of different speed.}\label{fig:r2rmse}
 \end{figure}
 
 \begin{table}[htbp]\centering
-\caption{Per-day test performance across models (clean and stimulated $R^2$, plus clean RMSE in cm/s).}
+\caption{Per-day test performance across models (clean and stimulated $R^2$, plus clean RMSE in cm/s). Bold marks the best model in each row: highest $R^2$, lowest RMSE. Mean pred.\ is the constant-velocity reference, not a model, so it is never bold.}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}lcccccccc@{}}\toprule
  & \multicolumn{5}{c}{Clean $R^2$} & \multicolumn{2}{c}{Clean RMSE (cm/s)} & Stim.\ $R^2$ \\
 \cmidrule(lr){2-6}\cmidrule(lr){7-8}\cmidrule(lr){9-9}
 Day & Ridge & Base.\ (SD) & Ens. & +Tones & Mean pred. & Ens. & +Tones & Base.\ / +Tones \\ \midrule
-250520 & $+0.084$ & $-0.106\ (0.097)$ & $-0.028$ & $+0.022$ & 65.0 & 65.6 & 63.4 & $-0.439\ /\ +0.018$ \\
-250530 & $+0.037$ & $+0.073\ (0.004)$ & $+0.107$ & $+0.058$ & 61.0 & 58.0 & 58.8 & $+0.145\ /\ +0.108$ \\
-250609 & $+0.046$ & $+0.132\ (0.014)$ & $+0.150$ & $+0.071$ & 68.0 & 63.2 & 65.5 & $-0.240\ /\ +0.048$ \\
-250613 & $+0.038$ & $+0.025\ (0.043)$ & $+0.079$ & $+0.030$ & 63.0 & 61.6 & 62.0 & $-0.399\ /\ +0.017$ \\
-250616 & $+0.022$ & $-0.019\ (0.050)$ & $+0.042$ & $-0.014$ & 65.0 & 64.5 & 64.9 & $-0.027\ /\ -0.030$ \\
+250520 & $\mathbf{+0.084}$ & $-0.106\ (0.097)$ & $-0.028$ & $+0.022$ & 65.0 & 65.6 & $\mathbf{63.4}$ & $-0.439\ /\ \mathbf{+0.018}$ \\
+250530 & $+0.037$ & $+0.073\ (0.004)$ & $\mathbf{+0.107}$ & $+0.058$ & 61.0 & $\mathbf{58.0}$ & 58.8 & $\mathbf{+0.145}\ /\ +0.108$ \\
+250609 & $+0.046$ & $+0.132\ (0.014)$ & $\mathbf{+0.150}$ & $+0.071$ & 68.0 & $\mathbf{63.2}$ & 65.5 & $-0.240\ /\ \mathbf{+0.048}$ \\
+250613 & $+0.038$ & $+0.025\ (0.043)$ & $\mathbf{+0.079}$ & $+0.030$ & 63.0 & $\mathbf{61.6}$ & 62.0 & $-0.399\ /\ \mathbf{+0.017}$ \\
+250616 & $+0.022$ & $-0.019\ (0.050)$ & $\mathbf{+0.042}$ & $-0.014$ & 65.0 & $\mathbf{64.5}$ & 64.9 & $\mathbf{-0.027}\ /\ -0.030$ \\
 \bottomrule\end{tabular}\label{tab:perday}
 \end{table}
 
-\subsection{Traditional pipeline: PARRM cleaning, then ridge refit on the $k$ calibration trials of each draw}\label{sec:parrm}
 
-This is traditional recalibration: clean the artifact without labels, then refit a linear decoder on the $k$ labelled trials. PARRM averages the recording at each phase of the stimulation cycle across thousands of cycles; anything repeating at the stimulation frequency survives, while movement-related activity cancels. Subtracting the template removes the repeated part and needs no labels or kinematics.
 
-Task 3.2 showed that cleaning alone does not let a clean-trained decoder transfer. We test the weaker hope that cleaning adds something after a refit. For each partition of \S\ref{sec:draws} we fit ridge from scratch on the $k$ calibration trials and score the same 30 query trials every time, once on recorded features and once on PARRM-cleaned features, changing nothing else. We choose the penalty on six stimulation-on validation sessions that never enter the test set, and compute query z-scoring from that draw's calibration trials, so nothing leaks across draws.
+\section{Supervised recalibration: PARRM cleaning and ridge refitting}\label{app:parrm}\label{sec:parrm}
+Standard recalibration removes the stimulation artifact without labels and then refits a linear decoder on $k$ labelled stimulation-on trials. PARRM removes the artifact by phase-averaging the recording across thousands of stimulation cycles—cancelling non-locked neural activity—and subtracting the resulting artifact template.
+
+Because PARRM alone cannot rescue a clean-trained decoder (Task~3.2), we test whether it helps when refitting ridge regression from scratch on $k$ stimulated trials. For every partition in \S\ref{sec:draws}, we train ridge on the $k$ calibration trials and evaluate on the 30 held-out query trials using either raw recorded features or PARRM-cleaned features (Table~\ref{tab:parrm}). Regularization is fixed on six separate stimulation-on validation sessions (Fig.~\ref{fig:sweeps}), and query $z$-scoring uses only each draw's $k$ calibration trials to prevent data leakage.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\textwidth]{fig_parameter_sweeps.png}
+\caption{Validation sweeps used to choose the ridge penalty and the KNN neighbour count. Top row: ridge $\alpha$ on a log scale for raw OFF (solid) and raw ON (dashed) input, with validation $R^2$ (left) and RMSE (right); the dotted line marks the selected $\alpha=10^5$. Bottom row: KNN neighbours for the OFF bank, ON bank, and ON calibration. ``Off bank'' is the 17\,568 stimulation-off training windows used as the nearest-neighbour memory, and ``ON calibration'' is the $k$ labelled stimulated trials of a draw; see the text for the difference. Selection uses mean validation $R^2$; RMSE is shown for comparison. The current code tunes on ON validation sessions, and the OFF curves show the no-stimulation split for reference. PARRM overlaps the raw ridge curves.}\label{fig:sweeps}
+\end{figure}
+
+\paragraph{What the ``off bank'' is.}
+Two $k$-nearest-neighbour baselines appear in the results, and they differ only in which labelled data the model may look at. For a query bin the decoder returns the average velocity of the $k$ nearest stored bins.
+
+The \emph{off bank} is the memory of clean training windows: all 17\,568 stimulation-off training windows, from the same 14 sessions the ridge and neural decoders are fitted on. No stimulated labels enter it, so the off-bank decoder is the non-parametric counterpart of the ``no adaptation'' rows --- a decoder whose entire model is a record of what clean data looks like. Scoring a stimulated session means, for each of its query bins, finding the 200 nearest clean training bins (the count is chosen once on validation sessions) and averaging their velocities.
+
+The \emph{in-context} variant replaces that memory with the $k$ calibration trials of the current draw, at most 20 trials and roughly 680 bins at $k=20$. It has no parameters and no training, so comparing the two variants separates ``the model has seen clean data'' from ``the model has seen labelled data from this session'': the off-bank row is what nearest neighbours achieve with only the former, and the in-context row adds the latter.
 
 \begin{table}[htbp]\centering
-\caption{Query-trial $R^2$ on stimulated input, averaged over 14 sessions and 10 draws, with bootstrap 95\% CIs. The last column is PARRM minus recorded.}
+\caption{Query-trial $R^2$ on stimulated recordings (mean across 14 sessions and 10 draws, with hierarchical bootstrap 95\% CIs).}
 \begin{tabular}{@{}clcc@{}}\toprule
 $k$ & Recorded ON & PARRM ON & Diff. \\ \midrule
-2 & $+0.0043\ [+0.0006,+0.0082]$ & $+0.0042\ [+0.0005,+0.0081]$ & $-0.0001$ \\
-5 & $+0.0180\ [+0.0120,+0.0246]$ & $+0.0179\ [+0.0119,+0.0247]$ & $-0.0001$ \\
-10 & $+0.0306\ [+0.0218,+0.0402]$ & $+0.0305\ [+0.0215,+0.0402]$ & $-0.0001$ \\
-20 & $+0.0456\ [+0.0331,+0.0592]$ & $+0.0452\ [+0.0325,+0.0592]$ & $-0.0004$ \\
-\bottomrule\end{tabular}\label{tab:parrm}\end{table}
+2  & $+0.0038\ [+0.0007,+0.0072]$ & $+0.0037\ [+0.0005,+0.0071]$ & $-0.0002$ \\
+5  & $+0.0160\ [+0.0103,+0.0223]$ & $+0.0159\ [+0.0100,+0.0223]$ & $-0.0002$ \\
+10 & $+0.0290\ [+0.0205,+0.0386]$ & $+0.0286\ [+0.0200,+0.0382]$ & $-0.0004$ \\
+20 & $+0.0444\ [+0.0320,+0.0582]$ & $+0.0438\ [+0.0315,+0.0576]$ & $-0.0006$ \\
+\bottomrule\end{tabular}\label{tab:parrm}
+\end{table}
 
-Refitting works: $R^2$ rises from $+0.004$ at $k=2$ to $+0.046$ at $k=20$, and the same model improves on clean input from $+0.001$ to $+0.031$. Cleaning does not: PARRM stays within 0.0004 of recorded input at every $k$, always slightly below, with fully overlapping intervals.
+Supervised refitting raised the query $R^2$ from $+0.0038$ at $k=2$ to $+0.0444$ at $k=20$, and the same-day unstimulated score from $+0.0014$ to $+0.0309$. PARRM did not improve on recorded features at any $k$, trailing by $0.0002\text{--}0.0006$ with overlapping confidence intervals. Three factors explain this null result: (i)~within-session artifact amplitude drift leaves large template residuals (channel~64 reaches $z \approx 5300$); (ii)~template subtraction strips genuine phase-locked neural and movement responses alongside the artifact; and (iii)~ridge refitting already down-weights artifact-dominated channels independently.
 
-Three mechanisms explain it. The repetition is approximate, since artifact amplitude drifts, so a template leaves a residual (channel 64 in 250616-102853 reaches $z\approx5300$ under stimulation). Part of the brain response is clock-locked too, so template subtraction removes it with the artifact. And a refit on labelled trials already learns small weights on artifact-dominated electrodes, so cleaning duplicates what the labels buy.
+\paragraph{Benchmarking scope and stress testing.}
+Whereas \S\ref{sec:eegnet} evaluates zero-shot transfer ($k=0$) across all 50 trials, \S\ref{sec:parrm} measures supervised adaptation on $k$ calibration trials evaluated over the 30 query trials; together, they establish the zero-shot and supervised baselines for downstream architectures (in-context transformer, fine-tuning, LoRA, and GRU). All models are evaluated on identical partitions and stress-tested on semi-synthetic 3~Hz and 20~Hz recordings where the 35 decoded LFP channels are scaled to $10\times$ artifact amplitude via $\text{LFP}_{10\times} = \text{LFP}_{\text{recorded}} + 9\,\text{PARRM}_{\text{artifact}}$.
 
-We do not compare these numbers with the stimulated column of \S\ref{sec:eegnet}: there the network is trained on clean sessions and scored on all 50 stimulated trials, here a model is fitted on $k$ stimulated trials and scored on $50-k$ query trials, averaged over draws. Together the sections bracket the comparison, no stimulated labels in \S\ref{sec:eegnet} and the standard route spending $k$ of them in \S\ref{sec:parrm}. The in-context transformer, fine-tuning, LoRA and the GRU benchmark are measured against both on the same partitions, and repeated on semi-synthetic recordings where the clean signal is known.
-\appendix
+
+
 \section{Stimulation artifact}\label{app:artifact}
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_artifact_3hz.png}
-\caption{3~Hz stimulation day. Left: one second of raw LFP on the worst channel compared against the same-day unstimulated recording. Right: the same recording folded at the 333~ms stimulation period.}\label{fig:artifact3}
+\caption{3~Hz stimulation day, worst channel. (a) one second of raw LFP around the largest transient, against the same-day unstimulated recording on the same channel. (b) the whole stimulation recording folded at the 333~ms period: the line is the median over cycles and the band the interquartile range, so a handful of multi-thousand-$z$ transients cannot set the curve. Red is the stimulated recording; the grey dashed line is the same-day unstimulated reference; the red band is the 25--75\% range (not clipped). The fold is flat, so the artifact carries no stable periodic template to estimate; what the decoder has to survive is the transient and its slow decay in (a).}\label{fig:artifact3}
 \end{figure}
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_artifact_20hz.png}
-\caption{20~Hz stimulation day. Because the largest transient is a slow step-and-recover, the right panel is high-passed to isolate the 50~ms periodic component.}\label{fig:artifact20}
+\caption{20~Hz stimulation day, worst channel. (a) one second of raw LFP around the largest transient: a step to about 7000~$z$ followed by a decay of several hundred milliseconds, so one transient outlasts many 50~ms periods. (b) the whole recording folded at the 50~ms period and high-passed above 5~Hz to remove the slow step; the line is the median over cycles and the band the interquartile range. Red is the stimulated recording; the grey dashed line is the same-day unstimulated reference; the red band is the 25--75\% range (not clipped).}\label{fig:artifact20}
 \end{figure}
 
 \begin{table}[htbp]\centering
 \caption{Cycle-averaged artifact amplitude and peak transients in robust $z$-units.}
+\small
 \begin{tabular}{@{}lcccccc@{}}\toprule
 Modulation & Period & Worst ch. & Avg. worst & Avg. median & Avg. clean & Peak transient \\ \midrule
 3 Hz  & 333 ms & 2  & 3.1~z & 0.05~z & 0.04~z & 3622~z \\
@@ -193,15 +271,20 @@ Modulation & Period & Worst ch. & Avg. worst & Avg. median & Avg. clean & Peak t
 \bottomrule\end{tabular}\label{tab:artifact}
 \end{table}
 
-Folding and averaging at the modulation period isolates a periodic residual of 3.1~z (3~Hz) and 2.0~z (20~Hz) on the worst channel, compared to 0.04--0.05~z on the median channel and 0.02--0.04~z in unstimulated recordings (Table~\ref{tab:artifact}). Because the artifact concentrates on one or two electrodes—with single transients reaching 3622~z and 7064~z (143$\times$ and 279$\times$ the maximum clean excursion of 25~z)—Task~3 clips input features at $\pm 10$~z.
+Folding and averaging at the modulation period isolates a periodic residual of 3.1~z (3~Hz) and 2.0~z (20~Hz) on the worst channel, compared to 0.04--0.05~z on the median channel and 0.02--0.04~z in unstimulated recordings (Table~\ref{tab:artifact}). The fold panels in Figs.~\ref{fig:artifact3} and~\ref{fig:artifact20} show medians and interquartile ranges rather than means, so the few multi-thousand-$z$ transients cannot set the curve; the mean peak-to-peak values are those in Table~\ref{tab:artifact}. Because the artifact concentrates on one or two electrodes—with single transients reaching 3622~z and 7064~z (143$\times$ and 279$\times$ the maximum clean excursion of 25~z)—Task~3 clips input features at $\pm 10$~z.
 
 \section{Synthetic tone augmentation}\label{app:tones}
 
-To test whether training against periodic interference improves zero-shot transfer without using stimulated labels, we augment clean training trials with a synthetic sine wave at the measured stimulator frequencies (2.99~Hz and 19.90~Hz; periods of 333~ms [6.7 bins] and 50~ms [1.0 bin]), leaving target velocities unchanged. Each training trial receives a single random-phase tone with amplitude 0.5--3.0~z and channel-wise gain 0.5--1.5~z. This matches the cycle-averaged artifact magnitude in Appendix~\ref{app:artifact} (2.0--3.1~z) while avoiding the 3{,}000--7{,}000~z peak transients that would otherwise saturate the network.
+To test whether training against periodic interference improves zero-shot transfer without using stimulated labels, we augment clean training trials with a synthetic sine wave at the measured stimulator frequencies (2.99~Hz and 19.90~Hz; periods of 333~ms [6.7 bins] and 50~ms [1.0 bin]), leaving target velocities unchanged. Each training trial receives a single random-phase tone with amplitude 0.5--3.0~z and channel-wise gain 0.5--1.5 (dimensionless). This matches the cycle-averaged artifact magnitude in Appendix~\ref{app:artifact} (2.0--3.1~z) while avoiding the 3{,}000--7{,}000~z peak transients that would otherwise saturate the network.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\textwidth]{tone_augmentation.pdf}
+\caption{Tone augmentation on a real stimulation-off training trial. (a) A clean trial $x_c(t)$ receives a synthetic tone $A g_c\sin(2\pi f t+\phi)$ to form $x'_c(t)$; the target velocities are unchanged. Each training trial draws one frequency $f\in\{3,20\}$~Hz, amplitude $A\in[0.5,3.0]$ robust $z$, phase $\phi\in[0,2\pi)$, and one gain $g_c\in[0.5,1.5]$ per channel. (b) The clean trial (session Butters-250522-095740, trial 0, channel 28). (c) The same trial with an illustrative 3~Hz tone ($A=1.5$~z, $g_c=1.0$). (d) The actual seed-0 draw for this trial: 20~Hz, $A=1.17$~z, $\phi=0.26$~rad, $g_c=0.89$. (e) A 0.25~s zoom comparing the clean and augmented traces. The dashed curves in (c)--(d) are the added tones, plotted at zero offset. The augmentation is applied only to the stimulation-off training set, and the same augmented set is reused across all five seeds.}\label{fig:toneaug}
+\end{figure}
 
 \begin{figure}[htbp]\centering
 \includegraphics[width=\textwidth]{fig_tones_curves.png}
-\caption{Clean validation $R^2$ across training epochs for the five tone-augmented runs (dotted line: unaugmented baseline mean of 0.136).}\label{fig:tonescurves}
+\caption{Clean validation $R^2$ across training epochs for the five tone-augmented runs. One colour per run; the bold black line is the seed mean, the dashed line its 5-epoch running average, and the red dots mark the kept checkpoints. The dotted line is the unaugmented baseline mean of 0.136, so the whole cluster sits below it: tones buy stimulated robustness at a cost in clean accuracy.}\label{fig:tonescurves}
 \end{figure}
 
 \begin{table}[htbp]\centering
@@ -228,7 +311,10 @@ Tone augmentation lowers clean validation $R^2$ from $0.1357 \pm 0.0112$ to $0.0
 \item \textbf{Evaluation scope:} \S\ref{sec:parrm} evaluates on the 30 held-out query trials after supervised adaptation on $k$ stimulated trials, whereas \S\ref{sec:eegnet} evaluates zero-shot across all 50 stimulated trials.
 \end{itemize}
 
+\begingroup
+\raggedright
 \paragraph{Checkpoints and code.}
-All ten saved \texttt{state\_dict} checkpoints (five baseline, five tone-augmented; 31~KB, 21 tensors, 6{,}005 parameters each) load strictly via positional keys and reproduce logged validation scores within $10^{-5}$ and all 154 rows of \texttt{task4\_2\_eegnet\_off.csv} exactly. Running \texttt{task4\_1\_draws.ipynb}, \texttt{task4\_2\_eegnet.ipynb}, and \texttt{task4\_3\_parrm\_ridge.ipynb} sequentially from the repository root regenerates all partitions, checkpoints, and metric tables; figures are generated via \texttt{scripts/make\_eegnet\_block\_diagram.py}, \texttt{scripts/make\_eegnet\_sampling\_diagram.py}, and \texttt{scripts/make\_seed\_figures.py}.
+All ten saved \texttt{state\_dict} checkpoints (five baseline, five tone-augmented; 31~KB, 21 tensors, 6{,}005 stored scalars each) load strictly via positional keys and reproduce logged validation scores within $10^{-5}$ and all 154 rows of \texttt{task4\_2\_eegnet\_off.csv} exactly. Running \texttt{task4\_1\_draws.ipynb}, \texttt{task4\_2\_eegnet.ipynb}, and \texttt{task4\_3\_parrm\_ridge.ipynb} sequentially from the repository root regenerates all partitions, checkpoints, and metric tables; figures and the data table are generated via \texttt{scripts/make\_eegnet\_block\_diagram.py}, \texttt{scripts/make\_causal\_convolution\_diagram.py}, \texttt{scripts/make\_data\_pipeline\_diagram.py}, \texttt{scripts/make\_report\_figures.py}, \texttt{scripts/make\_seed\_figures.py}, and \texttt{scripts/make\_tone\_augmentation\_diagram.py}.
+\par\endgroup
 
 \end{document}

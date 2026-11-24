@@ -33,7 +33,7 @@ FLOW = [
     ("epoch start: new permutation of 560", "default_rng(seed).permutation(560)", "rand"),
     ("35 batches of 16 trials", "slices of the permutation, not of the file · (16, 35, 2000)", "step"),
     ("forward, backward, update", "Muon on matrices, Adam on vectors · 35 steps/epoch", "step"),
-    ("score 150 held-out trials", "fixed order, R2 on valid bins", "val"),
+    ("score 150 held-out trials", "fixed order, R2 = mean(R2_vx, R2_vy) on valid bins", "val"),
     ("keep best epoch", "stop after 20 epochs without improvement", "val"),
 ]
 
@@ -93,7 +93,8 @@ def build():
     ys = top0 + max(split, len(FLOW) - split) * ROW - 16 + BOX_H + 14
     # seed fan: one line -> five seeds
     parts.append(f'<text x="{PAD}" y="{ys - 6}" class="note">steps 1 and 2 are fixed; steps '
-                 f'3 to 7 repeat once per seed, five runs in total, identical data and code</text>')
+                 f'3 to 7 repeat once per seed, five runs in total. The ensemble is the mean '
+                 f'of the five predictions, not the mean of five scores.</text>')
     chips = []
     cx = PAD
     for k in range(5):
@@ -117,7 +118,11 @@ def build():
         x = PAD + j * (out_w + 10)
         parts.append(box(x, oy, t, n, tag, w=out_w))
 
-    total = oy + BOX_H + 12
+    note_y = oy + BOX_H + 14
+    parts.append(f'<text x="{PAD}" y="{note_y}" class="note">R2 = (R2_vx + R2_vy) / 2. '
+                 f'Tones: a random-phase 3 or 20 Hz sine added to clean training trials '
+                 f'(Appendix B); targets unchanged.</text>')
+    total = note_y + 12
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {total:.0f}" '
         f'width="{W}" height="{total:.0f}" '
