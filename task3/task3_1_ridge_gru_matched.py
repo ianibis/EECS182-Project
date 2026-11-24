@@ -44,34 +44,9 @@ from task3_make_amp10_features import VARIANT as AMP10_VARIANT
 
 REFERENCE = 'export_none'
 DATASETS = {'recorded': 'export_none', 'parrm': 'parrm_none', 'amp10': AMP10_VARIANT}
-MUS = np.concatenate([np.logspace(0, 8, 17), [np.inf]])  # 1 to 10^8 in half decades, then no adaptation
+MUS = C.MUS  # 1 to 10^8 in half decades, then no adaptation
 N_LAGS = 19
 FEATURE_LABEL = 'lmp+bands+hf200_400'
-
-
-class SameDayAdapter:
-    """Refits a cross-day ridge model on one day's labeled calibration bins.
-
-    With X, Y centered on those bins, W = W0 + D where D minimizes
-    ||(Y - X W0) - X D||² + mu ||D||², i.e. D = Xᵀ (X Xᵀ + mu I)⁻¹ (Y - X W0).
-    With fewer bins than inputs this uses the eigendecomposition X Xᵀ = Q E Qᵀ,
-    computed once for every mu.
-    """
-
-    def __init__(self, X, Y):
-        self.x_mean = X.mean(axis=0, dtype=np.float64)
-        self.y_mean = Y.mean(axis=0, dtype=np.float64)
-        self.Xc = X.astype(np.float64) - self.x_mean
-        self.Yc = Y.astype(np.float64) - self.y_mean
-        e, self.Q = np.linalg.eigh(self.Xc @ self.Xc.T)
-        self.e = np.maximum(e, 0.0)
-
-    def fit(self, base, mu):
-        if np.isinf(mu):
-            return base
-        residual = self.Yc - self.Xc @ base.W
-        W = base.W + self.Xc.T @ (self.Q @ ((self.Q.T @ residual) / (self.e + mu)[:, None]))
-        return C.RidgeModel(W=W, b=self.y_mean - self.x_mean @ W, lam=base.lam)
 
 
 def calibration(session, variant, n_lags):
@@ -79,7 +54,7 @@ def calibration(session, variant, n_lags):
     n_pool, n_query = len(C.trial_rows(session, 'pool')), len(C.trial_rows(session, 'query'))
     if (n_pool, n_query) != (20, 30):
         raise ValueError(f'{session}: expected 20 calibration and 30 query trials, got {n_pool} and {n_query}')
-    return SameDayAdapter(*C.session_arrays(session, variant, 'pool', n_lags, hf=True))
+    return C.SameDayAdapter(*C.session_arrays(session, variant, 'pool', n_lags, hf=True))
 
 
 def main(n_lags):

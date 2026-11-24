@@ -18,11 +18,11 @@ On Mac or Linux, use `.venv/bin/pip` and `.venv/bin/python` instead.
 Then run the scripts from the repository root. All Task 3 code is in the `task3/` folder, and each script saves CSV files to `task3_results/`:
 
 ```
-.venv\Scripts\python task3/task3_1_ridge.py                  # Task 3.1 with the default settings (9 lags)
-.venv\Scripts\python task3/task3_1_ridge.py --lags 19        # longer history (we also tried 14 and 29)
+.venv\Scripts\python task3/task3_1_ridge.py                  # Task 3.1 with the default settings (19 lags, as in the GRU)
+.venv\Scripts\python task3/task3_1_ridge.py --lags 9         # shorter history (we also tried 14 and 29)
 .venv\Scripts\python task3/task3_1_ridge_within_session.py   # Task 3.1 same-day check (accepts --lags)
 .venv\Scripts\python task3/task3_1_xgboost.py --device cuda  # Task 3.1 with XGBoost (drop --device cuda without an NVIDIA GPU)
-.venv\Scripts\python task3/task3_2_parrm.py                  # Task 3.2 (same options as 3.1)
+.venv\Scripts\python task3/task3_2_parrm.py                  # Task 3.2: PARRM (k = 0), then ridge refit on k = 2-20 ON trials
 .venv\Scripts\python task3/task3_3_stif.py                   # Task 3.3 (accepts --lags)
 ```
 
