@@ -21,11 +21,14 @@ training split and never see the calibration trials.
 | | 10 | 0.017 | 0.030 | 0.011 | 0.021 |
 | | 20 | 0.029 | 0.051 | 0.021 | 0.032 |
 | MLP (2 hidden, 90 k params) | 0 | 0.037 | −0.023 | 0.047 | 0.041 |
-| EEGNet (5.9 k params) | 0 | −0.077 | 0.068 | −0.072* | 0.066* |
+| EEGNet (5.9 k params) | 0 | **−0.165** | 0.045 | 0.053 | 0.024 |
 | GRU | 0 | 0.026 | 0.030 | 0.036 | 0.029 |
 
-\* Stale. These EEGNet off scores came from the stimulated session instead of the no-stimulation
-reference. The code is fixed, so rerun the EEGNet section of `task4/task4_2_eegnet.ipynb` to replace them.
+The EEGNet row is the run whose weights are in `task4/checkpoints/`: reloading them reproduces
+`task4/results/task4_2_eegnet_off.csv` exactly. `results/table_main.csv` and earlier drafts of
+this page carry older EEGNet numbers (−0.052 / −0.027 and −0.077 / 0.068) from runs before the
+no-stimulation reference bug was fixed; they are superseded. See `docs/decoder-comparison.md`
+for the audit.
 
 ## What the numbers say
 
@@ -33,22 +36,30 @@ reference. The code is fixed, so rerun the EEGNet section of `task4/task4_2_eegn
    20 Hz (−0.010 raw, −0.020 PARRM): worse than predicting the mean. At 3 Hz it survives at
    0.025. Refitting on k=20 ON trials lifts 20 Hz to 0.053–0.055, so the loss is
    recoverable. This is the effect the project is about.
-2. **PARRM cleaning without labels does not help** (20 Hz: −0.020 vs −0.010 raw). Cleaning
-   the input while keeping a decoder fitted on other days changes nothing; the gain only
-   appears once labelled ON trials are used. That is the cleaning-vs-labels decomposition
-   the four ridge conditions were designed to separate.
+2. **PARRM cleaning without labels does not help a feature-domain decoder** (20 Hz: −0.020
+   vs −0.010 raw). Cleaning the input while keeping a ridge decoder fitted on other days
+   changes nothing; the gain only appears once labelled ON trials are used. That is the
+   cleaning-vs-labels decomposition the four ridge conditions were designed to separate.
+   The qualifier matters: cleaning *does* rescue a waveform-domain decoder. A fixed EEGNet on
+   raw 1 kHz LFP goes from −0.145 to +0.050 on the same sessions once the input is cleaned
+   (`task4/README.md` §4.2.10), because a band-power decoder has already averaged most of the
+   artifact away while a raw-LFP one has not.
 3. **k=2 recovers nothing; the gain is nearly all between k=10 and k=20.** Monotone in both
    frequencies and for both ridge and KNN. With 30 query trials and 7 sessions per frequency
    the CIs are wide, but the ordering is consistent across all 10 draws.
 4. **Nonparametric adaptation is competitive.** KNN with the k calibration trials as its
    entire model reaches 0.029 (3 Hz) and 0.051 (20 Hz) at k=20. That is within 0.004 of ridge
    refit, with zero weight updates. This is the cheapest version of the in-context claim.
-5. **EEGNet is not a reliable baseline here.** It has the best *validation* R² (0.10–0.11 on
-   held-out blocks of training sessions) and the worst test behaviour at 3 Hz (−0.077), while
-   being the best baseline at 20 Hz (0.068). Trainability does not translate across days.
-6. **The GRU is the most stable deep baseline** (0.026 / 0.030, off 0.036 / 0.029) and needs
-   no tuning to be sane. The MLP is better than the GRU at 3 Hz (0.037) and worse at 20 Hz
-   (−0.023), so the MLP-vs-GRU ordering depends on the artifact frequency.
+5. **EEGNet is not a reliable baseline here.** It has the best *validation* R² (0.14–0.15 on
+   held-out blocks of training sessions) and the worst test behaviour, −0.165 at 3 Hz and
+   +0.045 at 20 Hz. Trainability does not translate across days, and the collapse is specific
+   to 3 Hz: the added artifact is still oscillatory after 50 ms binning there, and a slow
+   drift at 20 Hz (`semisynthetic/semi_synthetic_README.md`). Cleaning the input removes it
+   (see item 2).
+6. **The GRU is the most stable deep baseline** (0.028 / 0.029, off 0.038 / 0.028) and needs
+   no tuning to be sane. The MLP is better than the GRU at 3 Hz (0.039) and worse at 20 Hz
+   (−0.031), so the MLP-vs-GRU ordering depends on the artifact frequency. Three deep models,
+   three different frequency signatures, none of them explained by seed noise.
 
 ## Two problems with the evaluation design that the project should know about
 

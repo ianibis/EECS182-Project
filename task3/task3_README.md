@@ -6,13 +6,13 @@ This package contains the ridge scripts and a shorter GRU evaluation pipeline fo
 
 | Script | Use |
 | --- | --- |
-| `Task3/task3_1_ridge.py` | Linear OFF-to-ON benchmark (Task 3.1) |
-| `Task3/task3_2_parrm.py` | Ridge on recorded versus PARRM-cleaned ON features (3.2) |
-| `Task3/task3_3_stif.py` | Stimulation monitor-only control (3.3) |
-| `Task3/task3_1_xgboost.py` | Optional tree-model comparison |
-| `Task3/task3_gru_results.py` | GRU OFF/ON, PARRM, and 10x comparisons (3.1–3.2) |
-| `Task3/task3_gru_core.py` | Feature loading, saved model, calibration, and scoring |
-| `Task3/task3_make_semisynthetic_h5_v1.py` | Generate 10x ON recordings and feature caches |
+| `task3/task3_1_ridge.py` | Linear OFF-to-ON benchmark (Task 3.1) |
+| `task3/task3_2_parrm.py` | Ridge on recorded versus PARRM-cleaned ON features (3.2) |
+| `task3/task3_3_stif.py` | Stimulation monitor-only control (3.3) |
+| `task3/task3_1_xgboost.py` | Optional tree-model comparison |
+| `task3/task3_gru_results.py` | GRU OFF/ON, PARRM, and 10x comparisons (3.1–3.2) |
+| `task3/task3_gru_core.py` | Feature loading, saved model, calibration, and scoring |
+| `semisynthetic/EECS182_make_semisynthetic_h5.py` | Generate 10x ON recordings and feature caches |
 | `EECS182_NHP_data_loader.py`, `EECS182_NHP_features.py` | Shared recording and feature readers |
 
 The GRU runner loads five pretrained checkpoints. It does not train the models from scratch. Its inputs are 35 electrodes with nine features each (LMP, seven original bands, and 200–400 Hz power). Each trial has 19 warm-up bins followed by 40 scored 50-ms bins. The saved GRUs have a 48-unit projection and 64 hidden units. They are fully fine-tuned on 20 same-day OFF trials, and a time-dependent correction is fitted on those trials. The other 30 OFF trials and all ON query trials are scored without using their labels for adaptation.
@@ -21,10 +21,10 @@ From the project root:
 
 ```bash
 python -m pip install -r requirements.txt
-python Task3/task3_gru_results.py --self-test
-python Task3/task3_make_semisynthetic_h5_v1.py --self-test
-python Task3/task3_make_semisynthetic_h5_v1.py --split val-test
-python Task3/task3_gru_results.py --split test --dataset all
+python task3/task3_gru_results.py --self-test
+python semisynthetic/EECS182_make_semisynthetic_h5.py --self-test
+python semisynthetic/EECS182_make_semisynthetic_h5.py --split val-test
+python task3/task3_gru_results.py --split test --dataset all
 ```
 
 The GRU script writes `results/task3_gru/task3_gru_test_sessions.csv`, `task3_gru_test_off.csv`, `task3_gru_test_summary.csv`, and `task3_gru_test_parrm.csv`. Use `--split val` to check the validation sessions. The output distinguishes recorded, PARRM-cleaned, and 10x ON inputs and reports matched same-day OFF scores. Missing original or PARRM feature caches are computed from the corresponding recording and saved. The 10x feature caches must first be produced by the generator.
@@ -51,7 +51,7 @@ EECS282_finalProject/
 If the code is in a separate GitHub checkout, point the GRU runner to the existing Box folder:
 
 ```bash
-python Task3/task3_gru_results.py --root "/Users/io/Library/CloudStorage/Box-Box/EECS282_finalProject" --split test --dataset all
+python task3/task3_gru_results.py --root "/Users/io/Library/CloudStorage/Box-Box/EECS282_finalProject" --split test --dataset all
 ```
 
 The ridge scripts read the data root from the `TASK3_DATA_ROOT` environment variable. Set it to the Box folder before running ridge or GRU. Results are written to the local repository.
@@ -70,14 +70,18 @@ From the local GitHub checkout, set the Box path (replace this example if yours 
 
 ```bash
 export TASK3_DATA_ROOT="/Users/io/Library/CloudStorage/Box-Box/EECS282_finalProject"
-python Task3/task3_gru_results.py --root "$TASK3_DATA_ROOT" --split test --dataset all
-python Task3/task3_1_ridge.py
-python Task3/task3_2_parrm.py
-python Task3/task3_3_stif.py
+python task3/task3_gru_results.py --root "$TASK3_DATA_ROOT" --split test --dataset all
+python task3/task3_1_ridge.py
+python task3/task3_2_parrm.py
+python task3/task3_3_stif.py
 ```
 
 The GRU runner writes CSVs to `results/task3_gru/` in the local GitHub checkout. Ridge writes CSVs to `results/task3/`; that directory is ignored because it also contains checkpoints. To commit ridge tables, copy only CSVs into a separate `results/task3_ridge/` folder. No HDF5 recordings, feature caches, or checkpoints belong in Git.
 
-The generator was already run on the Box data; it need not be run again. To document the generated dataset, copy `semi_synthetic_README.md` from this repository to the Box folder as `semi_synthetic/parrm_amp10/README.md`. The generated `metadata.csv` is different from `semi_synthetic_metadata_schema.csv`, which is an explanatory field list.
+The generator was already run on the Box data; it need not be run again. It writes
+`recorded + 9 × PARRM_artifact` on the 35 decoded channels; `--root` is the folder holding
+`export_outputs/` and `parrm_outputs/`, so in a checkout whose recordings live under `data/`
+the command is `--root data`. See `semisynthetic/semi_synthetic_README.md` for the full
+description and the distinction from the synthetic 3/20 Hz tones used in task 4.2. To document the generated dataset, copy `semi_synthetic_README.md` from this repository to the Box folder as `semi_synthetic/parrm_amp10/README.md`. The generated `metadata.csv` is different from `semi_synthetic_metadata_schema.csv`, which is an explanatory field list.
 
 The runner does not retrain the five base GRUs and does not perform a k-labeled-ON-trial in-context comparison. It adapts on 20 same-day OFF trials and scores the 30 held-out query trials. The ridge scripts included here only score original and PARRM conditions; an additional dataset option would be needed to score ridge directly on 10x.

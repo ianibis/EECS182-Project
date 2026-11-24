@@ -15,8 +15,6 @@ from itertools import islice
 
 import pandas as pd
 import torch
-from torch import nn
-from braindecode.models import EEGNet
 
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 INPUTS = ['/kaggle/input'] if os.path.isdir('/kaggle/input') else []
@@ -68,27 +66,11 @@ EPOCHS = int(os.environ.get('EPOCHS', U.MAX_TRAINING_EPOCHS))
 SMOKE = os.environ.get('SMOKE') == '1'
 
 
-class CausalEEGNet(nn.Module):
-    """braindecode EEGNet, left-only temporal padding, one velocity pair per 50 ms bin."""
+class CausalEEGNet(U.CausalEEGNet):
+    """The shared task 4.2 model with the settings this run trains with."""
 
-    def __init__(self, channels=35, samples=2000, outputs=2, pool_first=2, pool_second=25):
-        super().__init__()
-        net = EEGNet(n_chans=channels, n_outputs=outputs, n_times=samples, final_conv_length=1,
-                     F1=SETTINGS['temporal_filters'], D=SETTINGS['depth_multiplier'],
-                     kernel_length=SETTINGS['kernel_samples'],
-                     depthwise_kernel_length=SETTINGS['separable_samples'],
-                     pool1_kernel_size=pool_first, pool2_kernel_size=pool_second,
-                     drop_prob=SETTINGS['dropout'])
-        layers = []
-        for module in net.children():
-            if isinstance(module, nn.Conv2d) and module.padding[1] > 0:
-                layers.append(nn.ConstantPad2d((module.kernel_size[1] - 1, 0, 0, 0), 0.0))
-                module.padding = (module.padding[0], 0)
-            layers.append(module)
-        self.layers = nn.Sequential(*layers)
-
-    def forward(self, lfp):
-        return self.layers(lfp).transpose(1, 2)
+    def __init__(self, **overrides):
+        super().__init__(**(SETTINGS | overrides))
 
 
 def train_run(dataset, method, validation, test):

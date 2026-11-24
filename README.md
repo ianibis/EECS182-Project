@@ -36,6 +36,11 @@ Task 4 runs as three notebooks under [task4/](task4), one per sub-task, sharing
 [task4/utils.py](task4/utils.py); see [task4/README.md](task4/README.md). Task 3 scripts read the
 data root from `TASK3_DATA_ROOT`; see [task3/task3_README.md](task3/task3_README.md).
 
+The 10× semi-synthetic recordings (`recorded + 9 × measured PARRM artifact`) are built by
+[semisynthetic/EECS182_make_semisynthetic_h5.py](semisynthetic/EECS182_make_semisynthetic_h5.py)
+and explained in [semisynthetic/semi_synthetic_README.md](semisynthetic/semi_synthetic_README.md).
+They are not the synthetic 3/20 Hz tones used to augment task 4.2 training.
+
 ```bash
 TASK3_DATA_ROOT="$PWD/data" .venv/bin/python task3/task3_1_ridge.py --lags 9
 ```
@@ -56,7 +61,7 @@ EECS182_data_manifest.csv       70 rows, one per session
 conditions_eACS_AM-kHz_v2.csv   102 candidate sessions with inclusion decisions
 splits.json                     train / val / test days, calibration subsets
 task3/                          ridge, XGBoost, PARRM and StiF checks
-semisynthetic/                  10x artifact-amplified recordings generator
+semisynthetic/                  10x artifact-amplified recordings generator and notes
 scripts/                        figures, diagrams and parameter sweeps
 reports/                        generated HTML reports and figures
 docs/                           proposal, spec, dataset, notes

@@ -2,9 +2,9 @@
 
 Emits reports/eegnet_block_diagram.svg: eleven stages in two columns read top-to-bottom
 then left-to-right. Each stage is a tensor graphic (batch = stacked offset sheets, sheet
-size log-scaled to the C x T extent of that stage) with its name, symbolic shape and a
-one-line description beside it. Three one-line operation definitions and a variable line
-sit under the flow so the diagram is self-contained.
+size log-scaled to the C x T extent of that stage) with its name and symbolic shape beside
+it, plus a variable legend under the flow. The operations themselves are described in the
+report text, not in the figure, so the blocks stay large enough to read.
 
 Hyperparameters are read from task4/utils.py so the diagram cannot silently drift from
 the model. Dropout shown is the sweep winner (0.25), not braindecode's default.
@@ -43,15 +43,15 @@ K2 = int(CFG["separable_samples"])
 F2 = F * D
 P, Q, DO = 2, 25, 0.25
 
-COL_W = 322
+COL_W = 232
 GAP = 18
 PAD = 12
 WIDTH = 2 * COL_W + GAP + 2 * PAD
 SHEET_DX, SHEET_DY = 4, -3
 BATCH_SHEETS = 3
-GRAPH_W = 62.0
-FACE_H = 58.0
-TEXT_W = 200          # name/shape/sub block beside the sheet
+GRAPH_W = 96.0
+FACE_H = 62.0
+TEXT_W = 118          # name/shape block beside the sheet
 
 COLORS = {
     "io": ("#e7f0ff", "#2f6fdb"),
@@ -81,14 +81,17 @@ SPLIT = 6
 
 
 def face_size(channels, samples):
-    w = GRAPH_W * math.log10(max(samples, 10)) / math.log10(T)
-    h = FACE_H * math.log10(max(channels, 1)) / math.log10(C)
-    return max(w, 12.0), max(h, 10.0)
+    # Compressed log range: the true extent ratio is 2000:40 by 35:1, which would leave
+    # the late stages as slivers. Keeping every sheet within 55-100 % of the frame makes
+    # each stage legible at full page width without pretending the sizes are to scale.
+    w = GRAPH_W * (0.55 + 0.45 * math.log10(max(samples, 10)) / math.log10(T))
+    h = FACE_H * (0.40 + 0.60 * math.log10(max(channels, 1)) / math.log10(C))
+    return max(w, 14.0), max(h, 11.0)
 
 
 def row_h(ch, smp):
     _, h = face_size(ch, smp)
-    return max(h, 40.0) + 12
+    return max(h, 34.0) + 12
 
 
 def col_x(col):
@@ -99,10 +102,8 @@ STYLE = """<style>
   svg .name { font-size: 10.5px; font-weight: 600; fill: #1f2328; }
   svg .shape { font-size: 9px; fill: #8b949e;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  svg .sub  { font-size: 9px; fill: #57606a; }
   svg .head { font-size: 12.5px; font-weight: 700; fill: #1f2328; }
   svg .note { font-size: 8.5px; fill: #57606a; }
-  svg .opd  { font-size: 8.5px; fill: #57606a; }
   svg .arrow { stroke: #6e7781; stroke-width: 1.15; }
   svg .var  { font-size: 8.5px; fill: #1f2328;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -140,16 +141,14 @@ def build():
         body.append(f'<rect x="{gx}" y="{y}" width="{w:.1f}" height="{h:.1f}" rx="2" '
                     f'fill="{fill}" stroke="{stroke}" stroke-width="1.3"/>')
         tx = gx + GRAPH_W + SHEET_DX * 2 + 10
-        mid = y + max(h, 40.0) / 2
-        body.append(f'<text x="{tx:.1f}" y="{mid - 8:.1f}" class="name">{name}</text>')
-        body.append(f'<text x="{tx + 8 + 6.3 * len(name):.1f}" y="{mid - 8:.1f}" '
-                    f'class="shape">{shape}</text>')
-        body.append(f'<text x="{tx:.1f}" y="{mid + 6:.1f}" class="sub">{sub}</text>')
+        mid = y + max(h, 34.0) / 2
+        body.append(f'<text x="{tx:.1f}" y="{mid - 6:.1f}" class="name">{name}</text>')
+        body.append(f'<text x="{tx:.1f}" y="{mid + 8:.1f}" class="shape">{shape}</text>')
         if idx and not (idx == SPLIT):
             prev = ys[idx - 1]
             _, ph = face_size(*STAGES[idx - 1][3:5])
             px = gx + 3
-            body.append(f'<line x1="{px}" y1="{prev + max(ph, 40.0) + 2:.1f}" '
+            body.append(f'<line x1="{px}" y1="{prev + max(ph, 34.0) + 2:.1f}" '
                         f'x2="{px}" y2="{y - 3:.1f}" class="arrow" marker-end="url(#head)"/>')
 
     # serpentine wrap between columns: out the bottom of the last left box, across the
@@ -160,33 +159,16 @@ def build():
     seg_bottom = bottoms[0] + 8
     rpx = col_x(1) + 3
     top_right = ys[SPLIT]
-    body.append(f'<path d="M {lpx} {py + max(ph, 40.0) + 2:.1f} V {seg_bottom:.1f} '
+    body.append(f'<path d="M {lpx} {py + max(ph, 34.0) + 2:.1f} V {seg_bottom:.1f} '
                 f'H {rpx:.1f} V {top_right - 11:.1f}" class="arrow" fill="none"/>')
     body.append(f'<line x1="{rpx:.1f}" y1="{top_right - 11:.1f}" x2="{rpx:.1f}" '
                 f'y2="{top_right - 3:.1f}" class="arrow" marker-end="url(#head)"/>')
 
     top = bottoms[0] + 22
-    ops = [
-        ("temporal conv:", f"Conv1d, kernel 1 x {K1}: filters the time course, reading all C "
-                           "channels at once."),
-        ("spatial conv:", f"depthwise {C} x 1: each map is a length-{C} electrode mix, weights "
-                          "renormalised to L2 norm 1"),
-        ("", f"so only the filter's direction is learned, never its scale ({F2} maps)."),
-        ("left pad:", f"ConstantPad2d adds {K1 - 1} zeros early-side only: bin t sees samples "
-                      "&lt;= t, stays causal."),
-    ]
     footer = [f'<line x1="{PAD}" y1="{top:.1f}" x2="{WIDTH - PAD}" y2="{top:.1f}" '
               'stroke="#eaeef2" stroke-width="1"/>']
-    oy = top + 14
-    for label, text in ops:
-        if label:
-            footer.append(f'<text x="{PAD}" y="{oy:.1f}" class="opd" font-weight="600">'
-                          f'{label}</text>')
-            footer.append(f'<text x="{PAD + 86}" y="{oy:.1f}" class="opd">{text}</text>')
-        else:
-            footer.append(f'<text x="{PAD + 86}" y="{oy:.1f}" class="opd">{text}</text>')
-        oy += 12
-    footer.append(f'<text x="{PAD}" y="{oy + 6:.1f}" class="var">B batch     C {C} channels'
+    oy = top + 16
+    footer.append(f'<text x="{PAD}" y="{oy:.1f}" class="var">B batch     C {C} channels'
                   f'     T {T} samples     N {N} bins     F {F}     D {D}     '
                   f'K1 {K1}     K2 {K2}     p {DO}</text>')
     total = oy + 16

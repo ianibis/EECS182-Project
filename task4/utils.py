@@ -60,6 +60,17 @@ LOADER_PATHS = lab_loader.Paths(
     kin_dir=os.path.join(DATA_DIR, 'kinematics_v3', 'bins50ms'),
 )
 
+# Semi-synthetic 10x condition: recorded LFP + 9 * PARRM artifact, stimulation-ON only.
+# Built by semisynthetic/EECS182_make_semisynthetic_h5.py; see task4/README.md.
+SEMISYNTHETIC_SCALE = 10.0
+SEMISYNTHETIC_EXPORT_DIR = os.path.join(DATA_DIR, 'semi_synthetic', 'parrm_amp10',
+                                        'h5_export_outputs')
+AMP10_VARIANT = 'amp10'  # feature_variant label for rows scored on the 10x recording
+
+# PARRM-cleaned counterpart of a stimulation-ON recording: the artifact subtracted.
+PARRM_DIR = os.path.join(DATA_DIR, 'parrm_outputs', 'parrm_h5')
+PARRM_VARIANT = 'parrm_lfp'  # feature_variant label for rows scored on the cleaned LFP
+
 MANIFEST_PATH = os.path.join(PROJECT_ROOT, 'EECS182_data_manifest.csv')
 SPLITS_PATH = os.path.join(PROJECT_ROOT, 'splits.json')
 MANIFEST_TABLE = lab_loader.load_manifest(LOADER_PATHS, MANIFEST_PATH)
@@ -135,8 +146,31 @@ def load_same_day_off_dataset(stimulated_session, variant, lag_count):
 def windows_from_valid_bins(dataset):
     return dataset['features'][dataset['valid_bins']], dataset['targets'][dataset['valid_bins']]
 
-def load_lfp_dataset(session, trials):
-    session_data = lab_loader.load_session(session, LOADER_PATHS, with_lfp=True, manifest=MANIFEST_TABLE)
+def semisynthetic_paths(export_dir=SEMISYNTHETIC_EXPORT_DIR):
+    """Loader paths that read LFP from the 10x semi-synthetic export folder.
+
+    Trials and kinematics are unchanged by the amplification, so only export_dir moves.
+    """
+    return lab_loader.Paths(
+        root=DATA_DIR,
+        export_dir=export_dir,
+        trial_dir=os.path.join(DATA_DIR, 'export_outputs', 'trials'),
+        kin_dir=os.path.join(DATA_DIR, 'kinematics_v3', 'bins50ms'),
+    )
+
+def parrm_paths(parrm_dir=PARRM_DIR):
+    """Loader paths that can read the PARRM-cleaned LFP via source='parrm'."""
+    return lab_loader.Paths(
+        root=DATA_DIR,
+        export_dir=os.path.join(DATA_DIR, 'export_outputs', 'h5_export_outputs'),
+        trial_dir=os.path.join(DATA_DIR, 'export_outputs', 'trials'),
+        parrm_dir=parrm_dir,
+        kin_dir=os.path.join(DATA_DIR, 'kinematics_v3', 'bins50ms'),
+    )
+
+def load_lfp_dataset(session, trials, paths=None, source='export'):
+    session_data = lab_loader.load_session(session, paths or LOADER_PATHS, with_lfp=True,
+                                           manifest=MANIFEST_TABLE, source=source)
     lab_loader.normalize(session_data)
     session_data.trials = session_data.trials[session_data.trials.include == 1]
     examples = lab_loader.trial_examples(
@@ -147,8 +181,8 @@ def load_lfp_dataset(session, trials):
                 targets=np.stack([example['kin'] for example in examples]).astype(np.float32),
                 valid_bins=np.stack([example['kin_valid'] for example in examples]).astype(bool))
 
-def load_lfp_split(session, part):
-    return load_lfp_dataset(session, trials_in_split_part(session, part))
+def load_lfp_split(session, part, paths=None, source='export'):
+    return load_lfp_dataset(session, trials_in_split_part(session, part), paths, source)
 
 STIMULATED_ON = 1    # manifest 'stim' flag for recordings with stimulation on
 STIMULATED_OFF = 0   # same-day no-stimulation reference recordings
@@ -665,19 +699,101 @@ class EEGNetRegressor(nn.Module):
     def forward(self, lfp):
         return self.layers(lfp.unsqueeze(1)).squeeze(2).transpose(1, 2)
 
+
+class CausalEEGNet(nn.Module):
+    """braindecode EEGNet with left-only padding: one (vx, vy) per 50 ms bin.
+
+    Single definition for task 4.2 and the Kaggle runner. Every padded convolution is
+    rebuilt as an explicit left-only pad plus an unpadded convolution, so a bin can only
+    see samples up to its own end.
+    """
+
+    def __init__(self, channel_count=35, samples=2000, outputs=2, temporal_filters=8,
+                 depth_multiplier=2, kernel_samples=500, separable_samples=62,
+                 pool_first=2, pool_second=25, dropout=0.5):
+        super().__init__()
+        from braindecode.models import EEGNet  # only task 4.2 needs braindecode
+        self.bin_count = samples // (pool_first * pool_second)
+        if self.bin_count * pool_first * pool_second != samples:
+            raise ValueError('pool_first * pool_second must divide samples into whole bins')
+
+        backbone = EEGNet(n_chans=channel_count, n_outputs=outputs, n_times=samples,
+                          final_conv_length=1, F1=temporal_filters, D=depth_multiplier,
+                          kernel_length=kernel_samples,
+                          depthwise_kernel_length=separable_samples,
+                          pool1_kernel_size=pool_first, pool2_kernel_size=pool_second,
+                          drop_prob=dropout)
+
+        layers = []
+        for module in backbone.children():
+            if isinstance(module, nn.Conv2d) and module.padding[1] > 0:
+                layers.append(nn.ConstantPad2d((module.kernel_size[1] - 1, 0, 0, 0), 0.0))
+                module.padding = (module.padding[0], 0)
+            layers.append(module)
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, lfp):
+        return self.layers(lfp).transpose(1, 2)
+
+
+def load_eegnet_checkpoint(name, checkpoint_dir=None):
+    """Load a saved CausalEEGNet state dict, e.g. 'task4_2_eegnet_seed0'."""
+    path = os.path.join(checkpoint_dir or CHECKPOINT_DIR, f'{name}.pt')
+    model = CausalEEGNet()
+    model.load_state_dict(torch.load(path, map_location='cpu', weights_only=True))
+    return model.eval()
+
 # ---------------------------------------------------------------------------
 # 7. Calibration draws (task 4.1)
 # ---------------------------------------------------------------------------
 
 DRAW_SEED = 20261106
 DRAWS_PER_SIZE = 10
+# 'fixed' calibrates from the pool that splits.json declares (blocks 1-2) and scores the
+# declared query (blocks 3-5), so k is the only thing that varies. 'remaining' scores
+# whatever the draw leaves behind and is kept only to reproduce the earlier numbers.
+QUERY_DEFINITION = 'fixed'
 
 def included_on_trials(session):
     return sorted(int(trial) for trial in load_session_metadata(session).included.trial)
 
-def sample_draws_for_session(session, ks=CALIBRATION_SIZES, n_draws=DRAWS_PER_SIZE, seed=DRAW_SEED):
+def calibration_pool_and_query(session):
+    """The declared calibration pool and query for one session, from splits.json."""
+    entry = SPLITS['calibration'][session]
+    return sorted(int(t) for t in entry['pool']), sorted(int(t) for t in entry['query'])
+
+def distinct_subsets(pool, k, n_draws, rng):
+    """Up to n_draws distinct k-subsets of pool, redrawn until no subset repeats.
+
+    C(len(pool), k) caps how many exist, so k equal to the pool size gives one.
+    """
+    target = min(n_draws, math.comb(len(pool), k))
+    seen, subsets, attempts = set(), [], 0
+    while len(subsets) < target and attempts < 1000 * target:
+        subset = frozenset(rng.sample(pool, k))
+        attempts += 1
+        if subset not in seen:
+            seen.add(subset)
+            subsets.append(sorted(subset))
+    return subsets
+
+def sample_draws_for_session(session, ks=CALIBRATION_SIZES, n_draws=DRAWS_PER_SIZE,
+                             seed=DRAW_SEED, query_definition=QUERY_DEFINITION):
+    """The k-trial calibration draws for one stimulation-on session."""
     trials = included_on_trials(session)
     rng = random.Random(f'{seed}:{session}')  # str seeds hash with sha512, so runs repeat
+
+    if query_definition == 'fixed':
+        pool, query = calibration_pool_and_query(session)
+        if not set(query) <= set(trials):
+            raise ValueError(f'{session}: the declared query leaves the included ON trials')
+        draws_by_k = {str(k): [dict(draw=subset, query=query)
+                               for subset in distinct_subsets(pool, k, n_draws, rng)]
+                      for k in ks}
+        return dict(pool=pool, query=query, subsets=draws_by_k)
+
+    if query_definition != 'remaining':
+        raise ValueError(f'unknown query_definition {query_definition!r}')
 
     orders = []  # one shuffled trial order per draw index
     for _ in range(n_draws):
@@ -689,56 +805,72 @@ def sample_draws_for_session(session, ks=CALIBRATION_SIZES, n_draws=DRAWS_PER_SI
     draws_by_k = {str(k): [dict(draw=order[:k], query=sorted(set(trials) - set(order[:k])))
                            for order in orders]
                   for k in ks}
-    return trials, draws_by_k
+    return dict(pool=None, query=None, subsets=draws_by_k)
 
-def build_draws(sessions=None, ks=CALIBRATION_SIZES, n_draws=DRAWS_PER_SIZE, seed=DRAW_SEED):
+def build_draws(sessions=None, ks=CALIBRATION_SIZES, n_draws=DRAWS_PER_SIZE, seed=DRAW_SEED,
+                query_definition=QUERY_DEFINITION):
     if sessions is None:
         sessions = sessions_in_split('test', STIMULATED_ON)  # default: all stimulated test sessions
 
     by_session = {}
     for session in sessions:
-        on_trial_numbers, draws_by_k = sample_draws_for_session(session, ks, n_draws, seed)
+        sampled = sample_draws_for_session(session, ks, n_draws, seed, query_definition)
         by_session[session] = dict(
             condition=str(SESSION_TABLE.loc[session, 'condition']),
             am_freq_hz=float(SESSION_TABLE.loc[session, 'am_freq_hz']),
             off_reference=SPLITS['off_reference'].get(session),  # same-day no-stimulation session
-            on_trials=on_trial_numbers,  # the ON trials every draw is sampled from
-            subsets=draws_by_k,          # str(k) -> n_draws entries of {'draw': [...], 'query': [...]}
+            on_trials=included_on_trials(session),  # every ON trial of the session
+            pool=sampled['pool'],                   # calibration pool, or None when 'remaining'
+            query=sampled['query'],                 # fixed query trials, or None when 'remaining'
+            subsets=sampled['subsets'],             # str(k) -> entries of {'draw': [...], 'query': [...]}
         )
 
-    payload = dict(version=2, created_by='task4/utils.py', unit='trial',
-                   query_definition='remaining', ks=list(ks), n_draws=n_draws,
+    payload = dict(version=3, created_by='task4/utils.py', unit='trial',
+                   query_definition=query_definition, ks=list(ks), n_draws=n_draws,
                    seed=seed, sessions=by_session)
     payload['checks'] = verify_draws(payload)  # refuse to hand back an invalid payload
     return payload
 
 def verify_draws(payload):
     failures, notes = [], []
+    fixed = payload.get('query_definition') == 'fixed'
     for session, entry in payload['sessions'].items():
         all_on = set(entry['on_trials'])
+        pool = set(entry['pool']) if entry.get('pool') else all_on
+        query = set(entry['query']) if entry.get('query') else None
         if len(all_on) != len(entry['on_trials']):
             failures.append(f'{session}: on_trials holds duplicates')
+        if query is not None:
+            if not query <= all_on:
+                failures.append(f'{session}: the query leaves the ON trials')
+            if pool & query:
+                failures.append(f'{session}: the pool and the query overlap')
 
         for k in payload['ks']:
             draws = entry['subsets'][str(k)]
-            if len(draws) != payload['n_draws']:
-                failures.append(f'{session}: k={k} has {len(draws)} draws, expected {payload["n_draws"]}')
+            if len(draws) > payload['n_draws']:
+                failures.append(f'{session}: k={k} has {len(draws)} draws, more than {payload["n_draws"]}')
+            if k > len(pool):
+                failures.append(f'{session}: k={k} exceeds the {len(pool)}-trial pool')
 
             for index, draw in enumerate(draws):
-                calibration, query = set(draw['draw']), set(draw['query'])
+                calibration, scored = set(draw['draw']), set(draw['query'])
                 label = f'{session}: k={k} draw {index}'
                 if len(calibration) != k:
                     failures.append(f'{label} is not {k} distinct trials')
-                if not calibration <= all_on:
-                    failures.append(f'{label} leaves the ON trials')
-                if calibration & query:
+                if not calibration <= pool:
+                    failures.append(f'{label} leaves the calibration pool')
+                if calibration & scored:
                     failures.append(f'{label} reuses a query trial')
-                if calibration | query != all_on:
+                if fixed and scored != query:
+                    failures.append(f'{label} does not use the declared query')
+                if not fixed and calibration | scored != all_on:
                     failures.append(f'{label} misses ON trials')
 
             distinct = len({frozenset(d['draw']) for d in draws})
             if distinct < payload['n_draws']:
-                notes.append(f'{session}: k={k} has {distinct} distinct draws among {payload["n_draws"]}')
+                notes.append(f'{session}: k={k} has {distinct} distinct draws among '
+                             f'{payload["n_draws"]}; only {math.comb(len(pool), k)} exist')
 
     return dict(passed=not failures, failures=failures, notes=notes)
 
@@ -1025,6 +1157,26 @@ def bootstrap_confidence_interval(values, resample_count=2000):
     if len(values) < 2:
         return np.nan, np.nan
     resampled = bootstrap_sample_means(values, resample_count)
+    return float(np.percentile(resampled, 2.5)), float(np.percentile(resampled, 97.5))
+
+def two_level_bootstrap_confidence_interval(groups, resample_count=2000, seed=0):
+    """95% CI for a mean over sessions, resampling sessions and the draws inside each.
+
+    `groups` holds one array of per-draw scores per session, so the interval covers both
+    which sessions were tested and which calibration sets were drawn inside them.
+    """
+    arrays = [np.asarray(group, float) for group in groups]
+    arrays = [array[np.isfinite(array)] for array in arrays]
+    arrays = [array for array in arrays if array.size]
+    if len(arrays) < 2:
+        return np.nan, np.nan
+    rng = np.random.default_rng(seed)
+    resampled = np.empty(resample_count)
+    for index in range(resample_count):
+        sessions = rng.integers(0, len(arrays), len(arrays))
+        resampled[index] = np.mean([arrays[session][rng.integers(0, arrays[session].size,
+                                                                 arrays[session].size)].mean()
+                                    for session in sessions])
     return float(np.percentile(resampled, 2.5)), float(np.percentile(resampled, 97.5))
 
 def select_method_scores(session_scores, method, frequency, k):
@@ -1337,6 +1489,76 @@ def stimulated_test_datasets():
     return {session: (load_lfp_split(session, 'query'),
                       load_lfp_dataset(SPLITS['off_reference'][session], None))
             for session in sessions_in_split('test', STIMULATED_ON)}
+
+
+def amp10_test_datasets(sessions=None):
+    """Query trials read from the 10x semi-synthetic recording, same-day OFF unchanged.
+
+    Only the ON recording is amplified, so the OFF control and the targets are the same
+    arrays stimulated_test_datasets() uses; the pair differs only in the input signal.
+    """
+    if not os.path.isdir(SEMISYNTHETIC_EXPORT_DIR):
+        raise FileNotFoundError(
+            f'No semi-synthetic exports at {SEMISYNTHETIC_EXPORT_DIR}; run\n'
+            '  python semisynthetic/EECS182_make_semisynthetic_h5.py '
+            '--root data --split val-test --h5-only')
+    sessions = sessions or sessions_in_split('test', STIMULATED_ON)
+    paths = semisynthetic_paths()
+    return {session: (load_lfp_split(session, 'query', paths),
+                      load_lfp_dataset(SPLITS['off_reference'][session], None))
+            for session in sessions}
+
+
+def parrm_test_datasets(sessions=None, parrm_dir=None):
+    """Query trials read from the PARRM-cleaned ON recording, same-day OFF unchanged.
+
+    The cleaned file only exists for stimulation-ON sessions, so the OFF control stays on
+    the recorded export and is identical to stimulated_test_datasets()'s.
+    """
+    sessions = sessions or sessions_in_split('test', STIMULATED_ON)
+    paths = parrm_paths(parrm_dir) if parrm_dir else parrm_paths()
+    return {session: (load_lfp_split(session, 'query', paths, source='parrm'),
+                      load_lfp_dataset(SPLITS['off_reference'][session], None))
+            for session in sessions}
+
+
+# The four input arms of the 10x analysis: recorded, amplified, and the two ways of
+# cleaning the amplified recording. See task4/make_parrm_amp10.py for why
+# 'parrm_reestimated' is the existing PARRM output rather than a new file.
+PARRM_AMP10_REUSE_DIR = os.path.join(DATA_DIR, 'semi_synthetic', 'parrm_amp10_reuse', 'parrm_h5')
+PARRM_REUSE_VARIANT = 'parrm_amp10_reuse'
+
+ARM_VARIANTS = {
+    'recorded': 'raw',
+    'amp10': AMP10_VARIANT,
+    'parrm_recorded': PARRM_VARIANT,
+    'parrm_amp10_reuse': PARRM_REUSE_VARIANT,
+}
+
+
+def amp10_arms(sessions=None, arms=None):
+    """Score-ready datasets for each input arm, keyed by arm name.
+
+    'parrm_recorded' is PARRM re-estimated on the amplified signal: the estimate scales with
+    the artifact, so subtracting it returns the recorded cleaned LFP. 'parrm_amp10_reuse'
+    subtracts one copy of the 1x template from the 10x signal, leaving eight copies.
+    """
+    arms = arms or list(ARM_VARIANTS)
+    datasets = {}
+    if 'recorded' in arms:
+        datasets['recorded'] = stimulated_test_datasets()
+    if 'amp10' in arms:
+        datasets['amp10'] = amp10_test_datasets(sessions)
+    if 'parrm_recorded' in arms:
+        datasets['parrm_recorded'] = parrm_test_datasets(sessions)
+    if 'parrm_amp10_reuse' in arms:
+        if not os.path.isdir(PARRM_AMP10_REUSE_DIR):
+            raise FileNotFoundError(
+                f'No reused-template files at {PARRM_AMP10_REUSE_DIR}; run\n'
+                '  python task4/make_parrm_amp10.py --split val-test')
+        datasets['parrm_amp10_reuse'] = parrm_test_datasets(sessions,
+                                                            parrm_dir=PARRM_AMP10_REUSE_DIR)
+    return datasets
 
 
 def train_with_early_stopping(model, train, validation, seed,

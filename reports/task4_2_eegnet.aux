@@ -1,0 +1,69 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{braindecode2020}
+\@writefile{toc}{\contentsline {subsection}{\numberline {0.1}Dataset and Preprocessing}{1}{subsection.0.1}\protected@file@percent }
+\newlabel{sec:data}{{0.1}{1}{Dataset and Preprocessing}{subsection.0.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Recordings and targets.}{1}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stimulation artifact and test splits.}{1}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Task 4: Decoding Movement Under Stimulation}{2}{section.4}\protected@file@percent }
+\newlabel{sec:task4}{{4}{2}{Task 4: Decoding Movement Under Stimulation}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Calibration draw}{2}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:draws}{{4.1}{2}{Calibration draw}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Trial partitioning.}{2}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Sampling protocol.}{2}{section*.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Partition structure across the 14 test sessions (434 total partitions). All evaluations score the same 30 held-out query trials per session; $k=20$ uses the entire calibration pool, yielding one draw per session.}}{2}{table.1}\protected@file@percent }
+\newlabel{tab:draws}{{1}{2}{Partition structure across the 14 test sessions (434 total partitions). All evaluations score the same 30 held-out query trials per session; $k=20$ uses the entire calibration pool, yielding one draw per session}{table.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Reproducibility and experimental control.}{2}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}EEGNet regression decoder (braindecode) on 1 kHz LFP, predicting kinematics per 50 ms window, trained on stimulation off trials}{2}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:eegnet}{{4.2}{2}{EEGNet regression decoder (braindecode) on 1 kHz LFP, predicting kinematics per 50 ms window, trained on stimulation off trials}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Causal EEGNet architecture}{2}{subsubsection.4.2.1}\protected@file@percent }
+\newlabel{sec:arch}{{4.2.1}{2}{Causal EEGNet architecture}{subsubsection.4.2.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Causal EEGNet forward pass (left to right). Stacked sheets denote batch size $B$ across spatial dimensions; grey labels indicate tensor shapes.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:arch}{{1}{3}{Causal EEGNet forward pass (left to right). Stacked sheets denote batch size $B$ across spatial dimensions; grey labels indicate tensor shapes}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}Training objective and hyperparameter selection}{3}{subsubsection.4.2.2}\protected@file@percent }
+\newlabel{sec:loop}{{4.2.2}{3}{Training objective and hyperparameter selection}{subsubsection.4.2.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}Seed variance, ensembling, and baseline comparison}{3}{subsubsection.4.2.3}\protected@file@percent }
+\newlabel{sec:seeds}{{4.2.3}{3}{Seed variance, ensembling, and baseline comparison}{subsubsection.4.2.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Training and evaluation pipeline. Data assembly (steps 1--2) is fixed; steps 3--7 repeat across five random seeds.}}{4}{figure.2}\protected@file@percent }
+\newlabel{fig:sampling}{{2}{4}{Training and evaluation pipeline. Data assembly (steps 1--2) is fixed; steps 3--7 repeat across five random seeds}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Architecture sweep ranked by clean validation $R^2$.}}{4}{table.2}\protected@file@percent }
+\newlabel{tab:sweep}{{2}{4}{Architecture sweep ranked by clean validation $R^2$}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Validation $R^2$ trajectories across five seeds (left; red dots mark early-stopped checkpoints) and kept checkpoint distribution with mean $\pm 1\tmspace  +\thickmuskip {.2777em}\mathrm  {SD}$ (right).}}{4}{figure.3}\protected@file@percent }
+\newlabel{fig:curves}{{3}{4}{Validation $R^2$ trajectories across five seeds (left; red dots mark early-stopped checkpoints) and kept checkpoint distribution with mean $\pm 1\;\mathrm {SD}$ (right)}{figure.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Zero-shot test performance and ensembling.}{5}{section*.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Five-day mean test $R^2$ with 95\% bootstrap confidence intervals.}}{5}{table.3}\protected@file@percent }
+\newlabel{tab:main}{{3}{5}{Five-day mean test $R^2$ with 95\% bootstrap confidence intervals}{table.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Per-day test $R^2$ on clean (left) and stimulated (right) recordings.}}{5}{figure.4}\protected@file@percent }
+\newlabel{fig:perday}{{4}{5}{Per-day test $R^2$ on clean (left) and stimulated (right) recordings}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Clean test $R^2$ for individual runs versus the five-seed prediction ensemble.}}{5}{figure.5}\protected@file@percent }
+\newlabel{fig:ensemble}{{5}{5}{Clean test $R^2$ for individual runs versus the five-seed prediction ensemble}{figure.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Physical error scale and comparison to ridge.}{5}{section*.7}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Measured versus predicted $v_x$ on an example trial (left), prediction shrinkage scatter (middle), and $R^2$ versus RMSE relative to the mean predictor (right, grey crosses).}}{6}{figure.6}\protected@file@percent }
+\newlabel{fig:r2rmse}{{6}{6}{Measured versus predicted $v_x$ on an example trial (left), prediction shrinkage scatter (middle), and $R^2$ versus RMSE relative to the mean predictor (right, grey crosses)}{figure.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Per-day test performance across models (clean and stimulated $R^2$, plus clean RMSE in cm/s).}}{6}{table.4}\protected@file@percent }
+\newlabel{tab:perday}{{4}{6}{Per-day test performance across models (clean and stimulated $R^2$, plus clean RMSE in cm/s)}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Traditional pipeline: PARRM cleaning, then ridge refit on the $k$ calibration trials of each draw}{6}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:parrm}{{4.3}{6}{Traditional pipeline: PARRM cleaning, then ridge refit on the $k$ calibration trials of each draw}{subsection.4.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Query-trial $R^2$ on stimulated input, averaged over 14 sessions and 10 draws, with bootstrap 95\% CIs. The last column is PARRM minus recorded.}}{7}{table.5}\protected@file@percent }
+\newlabel{tab:parrm}{{5}{7}{Query-trial $R^2$ on stimulated input, averaged over 14 sessions and 10 draws, with bootstrap 95\% CIs. The last column is PARRM minus recorded}{table.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Stimulation artifact}{7}{appendix.A}\protected@file@percent }
+\newlabel{app:artifact}{{A}{7}{Stimulation artifact}{appendix.A}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces 3~Hz stimulation day. Left: one second of raw LFP on the worst channel compared against the same-day unstimulated recording. Right: the same recording folded at the 333~ms stimulation period.}}{7}{figure.7}\protected@file@percent }
+\newlabel{fig:artifact3}{{7}{7}{3~Hz stimulation day. Left: one second of raw LFP on the worst channel compared against the same-day unstimulated recording. Right: the same recording folded at the 333~ms stimulation period}{figure.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Cycle-averaged artifact amplitude and peak transients in robust $z$-units.}}{7}{table.6}\protected@file@percent }
+\newlabel{tab:artifact}{{6}{7}{Cycle-averaged artifact amplitude and peak transients in robust $z$-units}{table.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces 20~Hz stimulation day. Because the largest transient is a slow step-and-recover, the right panel is high-passed to isolate the 50~ms periodic component.}}{8}{figure.8}\protected@file@percent }
+\newlabel{fig:artifact20}{{8}{8}{20~Hz stimulation day. Because the largest transient is a slow step-and-recover, the right panel is high-passed to isolate the 50~ms periodic component}{figure.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Synthetic tone augmentation}{8}{appendix.B}\protected@file@percent }
+\newlabel{app:tones}{{B}{8}{Synthetic tone augmentation}{appendix.B}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Clean validation $R^2$ across training epochs for the five tone-augmented runs (dotted line: unaugmented baseline mean of 0.136).}}{8}{figure.9}\protected@file@percent }
+\newlabel{fig:tonescurves}{{9}{8}{Clean validation $R^2$ across training epochs for the five tone-augmented runs (dotted line: unaugmented baseline mean of 0.136)}{figure.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Validation $R^2$ on clean trials for tone-augmented runs.}}{9}{table.7}\protected@file@percent }
+\newlabel{tab:toneseeds}{{7}{9}{Validation $R^2$ on clean trials for tone-augmented runs}{table.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Limitations and reproduction}{9}{appendix.C}\protected@file@percent }
+\newlabel{app:caveats}{{C}{9}{Limitations and reproduction}{appendix.C}{}}
+\@writefile{toc}{\contentsline {paragraph}{Methodological caveats.}{9}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Checkpoints and code.}{9}{section*.9}\protected@file@percent }
+\gdef \@abspage@last{9}
