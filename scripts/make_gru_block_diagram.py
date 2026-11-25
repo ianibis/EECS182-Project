@@ -19,13 +19,13 @@ PDF = os.path.join(ROOT, "reports", "figures", "gru_block_diagram.pdf")
 
 N_FEATURES, N_HIDDEN, N_OUT = 280, 256, 2
 
-WIDTH, PAD = 744, 18
+WIDTH, PAD = 812, 18
 CENTERS = [68, 188, 292, 414]           # bins 1, 2, ellipsis, N
 GRU_W, GRU_H, GRU_Y = 86, 54, 164
 IN_W, IN_H, IN_Y = 86, 38, 252
 OUT_W, OUT_H, OUT_Y = 74, 24, 52
 BAR = (25, 90, 432, 38)
-CARD = (494, 52, 238, 284)
+CARD = (494, 52, 304, 300)
 
 COLORS = {
     "in": ("#e7f0ff", "#2f6fdb"),
@@ -155,34 +155,35 @@ def build():
     body.append(text(574, 92, f"{N_FEATURES}", "small", "middle"))
     body.append(arrow(574, 98, 574, 120))
 
-    body.append(box(526, 120, 132, 60, "cell"))
-    body.append(text(592, 139, "3 gates", "name", "middle"))
-    body.append(text(592, 152, "z update, r reset", "small", "middle"))
-    body.append(text(592, 165, "n candidate (\u03c3, tanh)", "small", "middle"))
+    body.append(box(526, 120, 150, 60, "cell"))
+    body.append(text(601, 139, "3 gate blocks", "name", "middle"))
+    body.append(text(601, 152, "r reset \u00b7 z update", "small", "middle"))
+    body.append(text(601, 165, "n candidate (\u03c3, tanh)", "small", "middle"))
 
-    body.append(box(670, 133, 58, 34, "state"))
-    body.append(rich(699, 148, "h_{b}", "name", "middle"))
-    body.append(text(699, 161, f"{N_HIDDEN}", "small", "middle"))
-    body.append(arrow(658, 150, 670, 150))
+    body.append(box(690, 133, 58, 34, "state"))
+    body.append(rich(719, 148, "h_{b}", "name", "middle"))
+    body.append(text(719, 161, f"{N_HIDDEN}", "small", "middle"))
+    body.append(arrow(676, 150, 690, 150))
 
     body.append(box(526, 218, 112, 34, "state"))
     body.append(rich(582, 233, "h_{b\u22121}", "name", "middle"))
     body.append(text(582, 246, "previous state", "small", "middle"))
     body.append(arrow(574, 218, 574, 180, "rec", "rhead"))
 
-    body.append(path("M 728 167 V 235 H 640", dash="4 3"))
-    body.append(text(692, 202, "next bin", "lbl", "middle"))
+    body.append(path("M 748 167 V 235 H 640", dash="4 3"))
+    body.append(text(706, 202, "next bin", "lbl", "middle"))
 
-    body.append(rich(504, 270, "h_{b} = GRU(x_{b}, h_{b\u22121})", "eq", sub_size=6.4))
+    body.append(rich(504, 264, "h_{b} = GRU(x_{b}, h_{b\u22121})", "eq", sub_size=6.4))
     for i, line in enumerate([
-        "z_{b} = \u03c3(W_{z} x_{b} + U_{z} h_{b\u22121} + b_{z})",
-        "r_{b} = \u03c3(W_{r} x_{b} + U_{r} h_{b\u22121} + b_{r})",
-        "n_{b} = tanh(W_{n} x_{b} + U_{n}(r_{b} \u2299 h_{b\u22121}) + b_{n})",
-        "h_{b} = (1 \u2212 z_{b}) \u2299 h_{b\u22121} + z_{b} \u2299 n_{b}",
+        "z_{b} = \u03c3(W_{z} x_{b} + U_{z} h_{b\u22121} + c_{z})",
+        "r_{b} = \u03c3(W_{r} x_{b} + U_{r} h_{b\u22121} + c_{r})",
+        "n_{b} = tanh(W_{n} x_{b} + c_{n}",
+        "        + r_{b} \u2299 (U_{n} h_{b\u22121} + d_{n}))",
+        "h_{b} = (1 \u2212 z_{b}) \u2299 n_{b} + z_{b} \u2299 h_{b\u22121}",
     ]):
-        body.append(rich(504, 284 + 14 * i, line, "eq", sub_size=6.4))
+        body.append(rich(504, 278 + 13 * i, line, "eq", sub_size=6.4))
 
-    height = 348
+    height = 364
     return "\n".join([
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {height}" '
         f'width="{WIDTH}" height="{height}" '
