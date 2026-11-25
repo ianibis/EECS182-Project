@@ -22,7 +22,7 @@ Mean validation R² over the 30-trial query set of each held-out stimulation ses
 
 Ridge is weak even without stimulation, so the ceiling is low. Refitting on 20 labelled ON
 trials recovers most of the 20 Hz loss; PARRM cleaning alone does not. Full tables are in
-[docs/baseline-results.md](docs/baseline-results.md).
+`docs/baseline-results.md`, which is kept locally only.
 
 ## Run it
 
@@ -47,7 +47,8 @@ TASK3_DATA_ROOT="$PWD/data" .venv/bin/python task3/task3_1_ridge.py --lags 9
 
 ## Layout
 
-Code and metadata only. `data/` (~15 GB) and `results/` stay local and are git-ignored.
+Code and metadata only. `data/` (~15 GB), `results/`, and the `reports/` and `docs/`
+writeups and figures stay local and are git-ignored.
 
 ```text
 task4/                          calibration draws, EEGNet regression, PARRM ridge (task 4)
@@ -63,8 +64,8 @@ splits.json                     train / val / test days, calibration subsets
 task3/                          ridge, XGBoost, PARRM and StiF checks
 semisynthetic/                  10x artifact-amplified recordings generator and notes
 scripts/                        figures, diagrams and parameter sweeps
-reports/                        generated HTML reports and figures
-docs/                           proposal, spec, dataset, notes
+reports/                        local only: writeups, figures, HTML reports
+docs/                           local only: proposal, spec, dataset, notes
 ```
 
 Data layout, all under `data/`:
@@ -78,22 +79,21 @@ features/<variant>/                 precomputed features per session
 kinematics_v3/bins50ms/             50 ms kinematics
 ```
 
-## Reports
+## Reports and docs (local only)
 
-| File | Contents |
-|---|---|
-| [reports/baselines/index.html](reports/baselines/index.html) | Every baseline on one page, with figures |
-| [reports/model_diagram.html](reports/model_diagram.html) | What goes in and what comes out, from a real trial |
-| [reports/model_architectures.html](reports/model_architectures.html) | Per-baseline architecture, validation animation, sweeps |
+The writeups and figures are not part of this repository, so the paths below only resolve
+on a machine that has them. `scripts/` regenerates the figures from `data/` and `results/`.
 
-## Docs
+```text
+reports/baselines/index.html            every baseline on one page, with figures
+reports/model_diagram.html              what goes in and what comes out, from a real trial
+reports/model_architectures.html        per-baseline architecture, validation animation, sweeps
 
-| File | Contents |
-|---|---|
-| [docs/proposal.md](docs/proposal.md) | Project proposal |
-| [docs/project-spec.md](docs/project-spec.md) | Scope and method |
-| [docs/DATASET.md](docs/DATASET.md) | Dataset handout: sessions, task, file formats |
-| [docs/baselines.md](docs/baselines.md) | Baseline design decisions |
-| [docs/baseline-results.md](docs/baseline-results.md) | Full result tables |
-| [docs/task3-notes.md](docs/task3-notes.md) | Task 3 analysis |
-| [docs/file-map.md](docs/file-map.md) | Where every file came from |
+docs/proposal.md                        project proposal
+docs/project-spec.md                    scope and method
+docs/DATASET.md                         dataset handout: sessions, task, file formats
+docs/baselines.md                       baseline design decisions
+docs/baseline-results.md                full result tables
+docs/task3-notes.md                     task 3 analysis
+docs/file-map.md                        where every file came from
+```
