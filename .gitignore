@@ -27,3 +27,7 @@ kaggle/dataset/
 kaggle/kernel/
 kaggle/out/
 task4_2_run/
+
+# Writeups, figures and generated reports stay local (LaTeX sources, PDFs, plots, diagrams).
+/reports/
+/docs/
