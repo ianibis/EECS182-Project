@@ -37,6 +37,15 @@ README = """# PARRM artifact amplification
 - `features/parrm_amp10/`: LMP and seven 1–200 Hz power bands from the modified recordings.
 - `features/parrm_amp10_hf/`: additional 200–400 Hz power for the GRU.
 
+## What the modification is
+
+`LFP_10x = LFP_recorded + (scale - 1) * PARRM_artifact`, with `scale = 10`, applied only to
+the 35 channels kept for decoding and only to `/lfp`. Every other dataset and attribute is
+copied unchanged. The artifact is the measured PARRM template estimate, not a sine, and it
+is not the synthetic 3/20 Hz synthetic frequency augmentation used in task 4.2. See
+`semisynthetic/semi_synthetic_README.md` in the repository for the full description, the
+regeneration command and the limits.
+
 ## Using the files
 
 Keep `splits.json`, `EECS182_data_manifest.csv`, trial CSVs, and `kinematics_v3/bins50ms` unchanged. Use the synthetic HDF5 only for stimulation-ON sessions. Stimulation-OFF sessions continue to use `export_outputs/h5_export_outputs`.
@@ -60,8 +69,17 @@ def project_root():
     return Path(__file__).resolve().parent.parent
 
 
-def tag(scale):
-    return f"s{scale:08.3f}".replace(".", "p")
+def project_file(root, name):
+    """Locate a project-level file under the data root or its parent.
+
+    The Box layout keeps splits.json and the manifest beside export_outputs/, while this
+    repository keeps them at the repository root and the recordings under data/.
+    """
+    for folder in (root, root.parent):
+        candidate = folder / name
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(f"Missing {name}; checked {root} and {root.parent}")
 
 
 def attr_scalar(value):
@@ -85,11 +103,11 @@ def source_paths(root, session):
 
 def select_sessions(root, split):
     import json
-    with (root / "splits.json").open() as fh:
+    with project_file(root, "splits.json").open() as fh:
         splits = json.load(fh)
     wanted = {"val-test": ("val", "test"), "all": ("train", "val", "test")}
     selections = wanted.get(split, (split,))
-    with (root / "EECS182_data_manifest.csv").open(newline="") as fh:
+    with project_file(root, "EECS182_data_manifest.csv").open(newline="") as fh:
         manifest = {row["session"]: row for row in csv.DictReader(fh)}
     entries = []
     for part in selections:
@@ -203,9 +221,12 @@ def make_recording(root, session, scale, tolerance, overwrite):
 
 
 def feature_paths(root, session, scale):
-    t = tag(scale)
-    base = root / "features" / f"parrm_amp10{t}" / f"{session}.h5"
-    hf = root / "features" / f"parrm_amp10_hf{t}" / f"{session}.h5"
+    # Docs, task3_gru_core and the shipped Box caches all name these parrm_amp10 /
+    # parrm_amp10_hf; the previous f"parrm_amp10{tag(scale)}" form wrote a folder
+    # ("parrm_amp10s0010p000") that no consumer looked in.
+    name = f"parrm_amp{scale:g}"
+    base = root / "features" / name / f"{session}.h5"
+    hf = root / "features" / f"{name}_hf" / f"{session}.h5"
     return base, hf
 
 
@@ -297,8 +318,12 @@ def update_metadata(folder, rows):
 
 def build(args):
     root = args.root.expanduser().resolve()
-    if not root.is_dir() or not (root / "splits.json").is_file():
+    if not root.is_dir():
         raise SystemExit(f"Not a project root: {root}")
+    try:
+        project_file(root, "splits.json")
+    except FileNotFoundError as error:
+        raise SystemExit(f"Not a project root: {error}") from None
     if not np.isclose(args.scale, DEFAULT_SCALE):
         raise SystemExit("This release packages the validated 10x condition only")
     entries = select_sessions(root, args.split)

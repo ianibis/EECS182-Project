@@ -21,7 +21,7 @@
   },
   "selection": "uniform draw among all day combinations meeting the rules (93 for test, then 16 for val)",
   "train_val_trials": "one task block (10 trials) per training session, drawn at random",
-  "calibration": "blocks [1, 2] form the calibration pool, blocks [3, 4, 5] the query trials; 10 random orders of the pool, first k trials of each order (nested within a repeat)"
+  "calibration": "blocks [1, 2] form the calibration pool (20 included ON trials), blocks [3, 4, 5] the fixed query (30 included ON trials); for k=2,5,10, 10 independent distinct k-subsets of the pool; for k=20, the full pool (one draw); 434 partitions"
  },
  "days": {
   "train": [

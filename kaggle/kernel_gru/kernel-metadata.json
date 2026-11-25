@@ -1,0 +1,15 @@
+{
+ "id": "kevinseriousying/task4-gru-lfp",
+ "title": "task4-gru-lfp",
+ "code_file": "task4_gru_kaggle.ipynb",
+ "language": "python",
+ "kernel_type": "notebook",
+ "is_private": true,
+ "enable_gpu": true,
+ "enable_internet": false,
+ "dataset_sources": [
+  "kevinseriousying/eecs182-lfp"
+ ],
+ "competition_sources": [],
+ "kernel_sources": []
+}

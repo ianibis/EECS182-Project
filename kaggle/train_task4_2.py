@@ -1,0 +1,159 @@
+"""Task 4.2: train CausalEEGNet on 1 kHz LFP for five seeds and score it.
+
+Reads the repository layout (dataset root -> task4/utils.py) and writes checkpoints,
+training logs and the score table to OUT_DIR. Runs unchanged on Kaggle:
+
+    LFP_ROOT=/kaggle/input/eecs182-lfp python train_task4_2.py
+
+Local smoke test (one epoch, one seed, one test session):
+
+    SMOKE=1 python kaggle/train_task4_2.py
+"""
+
+import os
+import sys
+from itertools import islice
+
+import pandas as pd
+import torch
+
+HERE = (
+    os.path.dirname(os.path.abspath(__file__))
+    if "__file__" in globals()
+    else os.getcwd()
+)
+INPUTS = ["/kaggle/input"] if os.path.isdir("/kaggle/input") else []
+
+
+def listing(folder, depth=3):
+    out = []
+    for root, dirs, files in os.walk(folder):
+        level = root[len(folder) :].count(os.sep)
+        out.append(
+            "  " * level + os.path.basename(root) + "/ " + " ".join(sorted(files)[:3])
+        )
+        if level >= depth:
+            dirs[:] = []
+    return out
+
+
+def find_root():
+    """Directory holding task4/utils.py: the repository, or the attached Kaggle dataset."""
+    for folder in [os.environ.get("LFP_ROOT")] + INPUTS + [HERE, os.path.dirname(HERE)]:
+        if folder and os.path.isfile(os.path.join(folder, "task4", "utils.py")):
+            return folder
+    for folder in INPUTS:  # Kaggle nests datasets below /kaggle/input
+        for root, dirs, files in os.walk(folder):
+            if os.path.basename(root) == "task4" and "utils.py" in files:
+                return os.path.dirname(root)
+            if root[len(folder) :].count(os.sep) >= 6:
+                dirs[:] = []
+    raise SystemExit(
+        "no task4/utils.py; tree:\n"
+        + "\n".join(sum((listing(folder) for folder in INPUTS or [HERE]), []))
+    )
+
+
+ROOT = find_root()
+OUT = os.environ.get("OUT_DIR") or (
+    "/kaggle/working/task4_2" if INPUTS else os.path.join(os.getcwd(), "task4_2_run")
+)
+sys.path.insert(0, os.path.join(ROOT, "task4"))
+import utils as U
+
+print("data root:", ROOT, "| outputs:", OUT, flush=True)
+
+U.CHECKPOINT_DIR = os.path.join(OUT, "checkpoints")
+U.TRAINING_LOG_DIR = os.path.join(OUT, "training_logs")
+for folder in (U.CHECKPOINT_DIR, U.TRAINING_LOG_DIR):
+    os.makedirs(folder, exist_ok=True)
+
+# Winning row of task4_results/eegnet_sweep.csv; see the report for why it is not a hard win.
+SETTINGS = dict(
+    temporal_filters=8,
+    depth_multiplier=2,
+    kernel_samples=500,
+    separable_samples=62,
+    dropout=0.25,
+)
+SEEDS = tuple(int(seed) for seed in os.environ.get("SEEDS", "0,1,2,3,4").split(","))
+EPOCHS = int(os.environ.get("EPOCHS", U.MAX_TRAINING_EPOCHS))
+SMOKE = os.environ.get("SMOKE") == "1"
+
+
+class CausalEEGNet(U.CausalEEGNet):
+    """The shared task 4.2 model with the settings this run trains with."""
+
+    def __init__(self, **overrides):
+        super().__init__(**(SETTINGS | overrides))
+
+
+def train_run(train_data, method, validation_data, test_pairs):
+    """Train one model per seed and score every test session, plus the seed ensemble."""
+    models, rows = [], []
+    for seed in SEEDS:
+        torch.manual_seed(
+            seed
+        )  # weights, trial order and dropout masks all follow from this
+        model, history = U.train_with_early_stopping(
+            CausalEEGNet(), train_data, validation_data, seed, max_epochs=EPOCHS
+        )
+        U.save_checkpoint(model, f"task4_2_{method}_seed{seed}")
+        U.save_training_log(history, method, seed, U.TRAINING_LOG_DIR)
+        models.append(model)
+        rows += [
+            U.score_trial_model(
+                model, session, method, "raw", seed, query_trials, control_trials
+            )
+            for session, (query_trials, control_trials) in test_pairs.items()
+        ]
+        print(
+            f'{method} seed {seed} val R2 {history["best_val_r2"]:+.4f} '
+            f'epoch {history["best_epoch"]} of {history["stopped_epoch"]}',
+            flush=True,
+        )
+    rows += [
+        U.score_ensemble(
+            models, session, f"{method}_ensemble", "raw", query_trials, control_trials
+        )
+        for session, (query_trials, control_trials) in test_pairs.items()
+    ]
+    return rows
+
+
+def main():
+    train_data = U.stimulation_off_train_dataset()
+    validation_data = U.stimulation_off_validation_dataset()
+    test_pairs = U.stimulation_on_test_pairs()
+    if SMOKE:
+        test_pairs = dict(islice(test_pairs.items(), 1))
+    print(
+        f'train {train_data["features"].shape} '
+        f'val {validation_data["features"].shape} '
+        f"test {len(test_pairs)} sessions seeds {SEEDS}",
+        flush=True,
+    )
+
+    rows = train_run(train_data, U.EEGNET_METHOD, validation_data, test_pairs)
+    rows += train_run(
+        U.add_synthetic_frequencies(train_data, seed=SEEDS[0]),
+        U.EEGNET_FREQ_AUGMENTATION,
+        validation_data,
+        test_pairs,
+    )
+    scores = pd.DataFrame(rows)
+    scores.to_csv(os.path.join(OUT, "task4_2_eegnet_off.csv"), index=False)
+    summary = (
+        scores.groupby(["method", "session"])[["r2_off_ave", "r2_ave"]]
+        .mean()
+        .groupby("method")
+        .mean()
+        .round(4)
+    )
+    summary.to_csv(os.path.join(OUT, "task4_2_summary.csv"))
+    print(f"wrote {len(scores)} rows to {OUT}")
+    print(summary.to_string())
+
+
+if __name__ == "__main__":
+    main()

@@ -1,5 +1,11 @@
 # Task 3: movement decoding during stimulation
 
+This package compares movement-velocity decoding on stimulation-OFF and stimulation-ON
+recordings, with and without PARRM cleaning. The 10x artifact-amplified ON recordings are a
+separate test condition. Ridge, XGBoost and the stimulation-monitor control write to
+`task3_results/`; the GRU training, calibration and ensemble outputs go under
+`task3_results/gru/`.
+
 | Script | Use |
 | --- | --- |
 | `task3/task3_1_ridge.py` | Linear OFF-to-ON benchmark (Task 3.1) |
@@ -30,7 +36,7 @@ export TASK3_DATA_ROOT="/path/to/Box/project"
 ```
 
 The decoder needs NumPy, pandas, h5py, and PyTorch. Use Python 3.10 or later.
-The [file map](../EECS182_file_map_261117.md) lists exact Box input paths.
+The file map (`docs/file-map.md`, kept locally) lists the exact input paths.
 The existing `TASK3_DATA_ROOT` setting is shared by the GRU and MLP. Checkout
 results stay local. Calibration and checkpoint lookups prefer generated
 checkout artifacts before falling back to the archived Box files.
