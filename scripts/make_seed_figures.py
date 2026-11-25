@@ -1,13 +1,13 @@
-"""Plots for 4.2.3 (and the tones appendix): validation curves and the seed spread.
+"""Plots for 4.2.3 (and the frequencies appendix): validation curves and the seed spread.
 
-Replaces the old ambiguous two-panel "baseline / synthetic tones" figure, which mixed
-the tones experiment into the seeds section. Now:
+Replaces the old ambiguous two-panel "baseline / synthetic frequencies" figure, which mixed
+the frequencies experiment into the seeds section. Now:
   fig_val_curves.png   -- two panels, validation R2 after every training epoch:
       left  = the five stimulation-off baseline runs
-      right = the five tone-augmented (stimulation-facing) runs, with the
+      right = the five synthetic-frequency-augmented (stimulation-facing) runs, with the
               stimulation-off mean as a dotted reference
-  fig_tones_curves.png -- the same left-panel style for the five tone-augmented runs,
-      used in the appendix where tones are actually introduced.
+  fig_synthetic_frequency_curves.png -- the same left-panel style for the five synthetic-frequency-augmented runs,
+      used in the appendix where frequencies are actually introduced.
 
 Writes both into reports/figures/.
 """
@@ -84,9 +84,9 @@ def val_curves_figure():
                  '(a) stimulation-off training', label_runs=True)
     axes[0].set_ylabel('validation R² (150 held-off clean trials)')
 
-    tone_curves, tone_bests, tone_dots = load('eegnet_stimulation_tones')
-    curves_panel(axes[1], tone_curves, tone_dots, tone_bests, '#d9772a',
-                 '(b) stimulation-facing, tone-augmented', label_runs=True)
+    frequency_curves, frequency_bests, frequency_dots = load('eegnet_synthetic_frequencies')
+    curves_panel(axes[1], frequency_curves, frequency_dots, frequency_bests, '#d9772a',
+                 '(b) stimulation-facing, synthetic-frequency-augmented', label_runs=True)
     axes[1].axhline(mean, color='#2f5d8a', lw=1.1, ls=':',
                     label='stimulation-off mean (0.136)')
 
@@ -105,26 +105,26 @@ def val_curves_figure():
     return mean, sd
 
 
-def tones_curves_figure():
-    curves, bests, dots = load('eegnet_stimulation_tones')
+def synthetic_frequency_curves_figure():
+    curves, bests, dots = load('eegnet_synthetic_frequencies')
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     mean, sd = curves_panel(ax, curves, dots, bests, '#d9772a',
-                            'Tone-augmented runs: one colour per run', label_runs=True)
+                            'Synthetic-frequency-augmented runs: one colour per run', label_runs=True)
     ax.set_ylabel('validation R² (150 held-off trials)')
     ax.fill_between([0, 75], mean - sd, mean + sd, color='#333333', alpha=0.10, lw=0)
     ax.axhline(0.1357, color='#2f5d8a', lw=1.2, ls=':')
-    ax.annotate('no-tone runs: mean 0.136', (12, 0.1385), fontsize=7.2, color='#2f5d8a')
+    ax.annotate('no-augmentation runs: mean 0.136', (12, 0.1385), fontsize=7.2, color='#2f5d8a')
     ax.set_ylim(-0.01, 0.15)
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', ncol=3, fontsize=6.6,
                frameon=False, bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=(0, 0.28, 1, 0.94))
-    fig.savefig(os.path.join(FIGDIR, 'fig_tones_curves.png'), dpi=150)
+    fig.savefig(os.path.join(FIGDIR, 'fig_synthetic_frequency_curves.png'), dpi=150)
     plt.close(fig)
     return mean, sd
 
 
 if __name__ == '__main__':
     m, s = val_curves_figure()
-    tm, ts = tones_curves_figure()
-    print(f'baseline {m:.4f} ± {s:.4f} | tones {tm:.4f} ± {ts:.4f}')
+    tm, ts = synthetic_frequency_curves_figure()
+    print(f'baseline {m:.4f} ± {s:.4f} | frequencies {tm:.4f} ± {ts:.4f}')

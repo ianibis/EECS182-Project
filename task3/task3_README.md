@@ -1,87 +1,108 @@
 # Task 3: movement decoding during stimulation
 
-This package contains the ridge scripts and a shorter GRU evaluation pipeline for the Butters LFP dataset. The main task is to compare movement-velocity decoding on stimulation-OFF and stimulation-ON recordings, with and without PARRM cleaning. The 10x artifact-amplified ON recordings are a separate test condition.
-
-## Files and runs
+This package compares movement-velocity decoding on stimulation-OFF and stimulation-ON
+recordings, with and without PARRM cleaning. The 10x artifact-amplified ON recordings are a
+separate test condition. Ridge, XGBoost and the stimulation-monitor control write to
+`task3_results/`; the GRU training, calibration and ensemble outputs go under
+`task3_results/gru/`.
 
 | Script | Use |
 | --- | --- |
 | `task3/task3_1_ridge.py` | Linear OFF-to-ON benchmark (Task 3.1) |
-| `task3/task3_2_parrm.py` | Ridge on recorded versus PARRM-cleaned ON features (3.2) |
+| `task3/task3_1_ridge_semisynthetic.py` | Ridge on recorded, PARRM-cleaned and 10x ON features |
+| `task3/task3_1_ridge_gru_matched.py` | Ridge with the GRU's 9 features, 19 lags and same-day calibration on 20 OFF trials |
+| `task3/task3_make_amp10_features.py` | 10x ON feature caches from the local `data/` layout |
+| `task3/task3_2_parrm.py` | Traditional pipeline (3.2): OFF ridge on recorded vs. PARRM-cleaned ON features (k = 0), then PARRM + ridge refit on k = 2, 5, 10, 20 labeled ON trials |
 | `task3/task3_3_stif.py` | Stimulation monitor-only control (3.3) |
 | `task3/task3_1_xgboost.py` | Optional tree-model comparison |
-| `task3/task3_gru_results.py` | GRU OFF/ON, PARRM, and 10x comparisons (3.1–3.2) |
-| `task3/task3_gru_core.py` | Feature loading, saved model, calibration, and scoring |
-| `semisynthetic/EECS182_make_semisynthetic_h5.py` | Generate 10x ON recordings and feature caches |
-| `EECS182_NHP_data_loader.py`, `EECS182_NHP_features.py` | Shared recording and feature readers |
 
-The GRU runner loads five pretrained checkpoints. It does not train the models from scratch. Its inputs are 35 electrodes with nine features each (LMP, seven original bands, and 200–400 Hz power). Each trial has 19 warm-up bins followed by 40 scored 50-ms bins. The saved GRUs have a 48-unit projection and 64 hidden units. They are fully fine-tuned on 20 same-day OFF trials, and a time-dependent correction is fitted on those trials. The other 30 OFF trials and all ON query trials are scored without using their labels for adaptation.
+The ridge scripts select their own linear hyperparameters and do not use the GRU checkpoint. They use LMP + 7 band powers per channel and default to 19 lags (1 s of history, as in the GRU); earlier results used 9 lags (`--lags 9`). These are **not** the same experiment as the later 19-lag residual ridge result reported in the project notes.
 
-From the project root:
+**Traditional pipeline (`task3_2_parrm.py`).** The OFF ridge decoder W0 is refit on k labeled, PARRM-cleaned trials of each stimulation-ON session, minimizing `||Y - XW - b||² + mu ||W - W0||²`. The k trials are the 10 draws per session in `splits.json` (`calibration[session].subsets[k]`, from blocks 1-2). mu is chosen for each k on the validation-day ON sessions, and the refit models are scored on the query trials (blocks 3-5). k = 0 is the OFF decoder on PARRM features. The summary reports the mean R² per condition and k, a 95% bootstrap interval over sessions, and the fraction of the ON-OFF loss recovered. Features of every validation and test session are normalized with its 20 calibration-pool trials (features only, no labels), even when k < 20.
 
-```bash
+The GRU uses 35 channels with nine features per channel, a 48-unit projection,
+and a 64-unit GRU. It predicts horizontal and vertical velocity residuals,
+with auxiliary speed and direction heads during training. A trial contains
+19 warm-up bins and 40 scored 50-ms bins. Each checkpoint has 37,316 parameters.
+The ensemble averages five seed predictions.
+
+## Setup and inputs
+
+Use the checkout's existing loader and features modules. From the repository root:
+
+```sh
 python -m pip install -r requirements.txt
-python task3/task3_gru_results.py --self-test
-python semisynthetic/EECS182_make_semisynthetic_h5.py --self-test
-python semisynthetic/EECS182_make_semisynthetic_h5.py --split val-test
-python task3/task3_gru_results.py --split test --dataset all
+export TASK3_DATA_ROOT="/path/to/Box/project"
 ```
 
-The GRU script writes `results/task3_gru/task3_gru_test_sessions.csv`, `task3_gru_test_off.csv`, `task3_gru_test_summary.csv`, and `task3_gru_test_parrm.csv`. Use `--split val` to check the validation sessions. The output distinguishes recorded, PARRM-cleaned, and 10x ON inputs and reports matched same-day OFF scores. Missing original or PARRM feature caches are computed from the corresponding recording and saved. The 10x feature caches must first be produced by the generator.
+The decoder needs NumPy, pandas, h5py, and PyTorch. Use Python 3.10 or later.
+The file map (`docs/file-map.md`, kept locally) lists the exact input paths.
+The existing `TASK3_DATA_ROOT` setting is shared by the GRU and MLP. Checkout
+results stay local. Calibration and checkpoint lookups prefer generated
+checkout artifacts before falling back to the archived Box files.
 
-The five GRU checkpoint files and the two original calibration CV CSVs must be present under `results/task3/`. They are deliberately not included here. They were generated earlier on the lab machine; see `docs/file_map.md`. The ridge scripts select their own linear hyperparameters and do not use the GRU checkpoint. Their default 9-lag ridge result is **not** the same experiment as the later 19-lag residual ridge result reported in the project notes.
+## Commands
 
-## Data location
+Run the existing ridge entry points with the same data setting:
 
-The default layout is the Box project folder:
-
-```text
-EECS282_finalProject/
-  EECS182_data_manifest.csv
-  splits.json
-  export_outputs/h5_export_outputs/<session>.h5
-  export_outputs/trials/<session>_trials.csv
-  parrm_outputs/parrm_h5/<session>.h5
-  features/export_none/<session>.h5
-  features/parrm_none/<session>.h5
-  kinematics_v3/bins50ms/<session>_bins50ms.csv
-  results/task3/checkpoints/*.pt
+```sh
+python -B task3/task3_1_ridge.py
+python -B task3/task3_2_parrm.py
+python -B task3/task3_3_stif.py
 ```
 
-If the code is in a separate GitHub checkout, point the GRU runner to the existing Box folder:
+The ridge, XGBoost, and stimulation-monitor scripts write to `task3_results/`.
+Their existing feature generator is `task3/task3_make_amp10_features.py`.
 
-```bash
-python task3/task3_gru_results.py --root "/Users/io/Library/CloudStorage/Box-Box/EECS282_finalProject" --split test --dataset all
+For training and calibration, run these in a clean checkout with the Box
+data and caches available:
+
+```sh
+python -B task3/task3_gru_multitask_v1.py --mode augmented --target velocity --device cpu
+python -B task3/task3_gru_full_finetune_v1.py --device cpu
+python -B task3/task3_gru_temporal_adapt_v1.py --device cpu
+python -B task3/task3_gru_ensemble.py --device cpu
 ```
 
-The ridge scripts read the data root from the `TASK3_DATA_ROOT` environment variable. Set it to the Box folder before running ridge or GRU. Results are written to the local repository.
+The multitask script trains seed 1 with the established loss, dropout, seed,
+and early stopping. The next two scripts fit the saved calibration grids
+using validation-day pools. The ensemble reuses archived peers with the
+archived seed-1 checkpoint. With a locally trained seed-1 checkpoint it
+creates any missing local peers from the original training split. Use a
+fresh output area for a full regeneration. Keep all generated checkpoints
+outside GitHub.
 
-## GitHub
+Run the established evaluations on the local or archived checkpoints:
 
-Commit the Python files, READMEs, manifest and splits (if sharing is permitted), and small result CSVs. Do **not** commit the continuous LFP exports, kinematics recordings, PARRM outputs, or checkpoint files without lab approval. The supplied `.gitignore` excludes large binaries by default.
-
-The check workflow runs syntax and synthetic tests on a GitHub-hosted runner. The results workflow requires a **self-hosted macOS runner** that can read the Box folder. Set the repository variable `TASK3_DATA_ROOT` to that folder. From the GitHub **Actions** tab, select **Run Task 3 GRU**, choose the split and dataset, and run it. The workflow uploads the result CSVs and commits those CSVs to the branch. It cannot run the real data analysis on a standard GitHub runner unless the data and checkpoints are made accessible there.
-
-The new code was checked against the original GRU model on synthetic arrays: forward outputs, weight updates during full fine-tuning, and the temporal correction were numerically identical. A synthetic two-session data test also produced the expected result CSVs. The complete pipeline has **not** been run against the actual lab dataset in this environment, so compare its first real run against the previous 0.1975 OFF test R² and the saved 3/20 Hz ON results.
-
-## Local setup: code in GitHub, data in Box
-
-From the local GitHub checkout, set the Box path (replace this example if yours differs):
-
-```bash
-export TASK3_DATA_ROOT="/Users/io/Library/CloudStorage/Box-Box/EECS282_finalProject"
-python task3/task3_gru_results.py --root "$TASK3_DATA_ROOT" --split test --dataset all
-python task3/task3_1_ridge.py
-python task3/task3_2_parrm.py
-python task3/task3_3_stif.py
+```sh
+python -B task3/task3_gru_evaluate.py --device cpu --split val
+python -B task3/task3_gru_verify.py --split validation
+python -B task3/task3_gru_evaluate.py --device cpu --split test
+python -B task3/task3_gru_verify.py --split test
+python -B task3/task3_gru_results.py --device cpu --split val --dataset all
 ```
 
-The GRU runner writes CSVs to `results/task3_gru/` in the local GitHub checkout. Ridge writes CSVs to `results/task3/`; that directory is ignored because it also contains checkpoints. To commit ridge tables, copy only CSVs into a separate `results/task3_ridge/` folder. No HDF5 recordings, feature caches, or checkpoints belong in Git.
+Each adaptation uses 20 same-day stimulation-OFF trials and an OFF-fitted
+time correction, then scores 30 disjoint query trials per session. Query
+conditions include OFF, recorded 1× ON, 10× ON, and PARRM-cleaned ON.
+Task 4.1 matched ON-context draws are a separate protocol.
 
-The generator was already run on the Box data; it need not be run again. It writes
-`recorded + 9 × PARRM_artifact` on the 35 decoded channels; `--root` is the folder holding
-`export_outputs/` and `parrm_outputs/`, so in a checkout whose recordings live under `data/`
-the command is `--root data`. See `semisynthetic/semi_synthetic_README.md` for the full
-description and the distinction from the synthetic 3/20 Hz tones used in task 4.2. To document the generated dataset, copy `semi_synthetic_README.md` from this repository to the Box folder as `semi_synthetic/parrm_amp10/README.md`. The generated `metadata.csv` is different from `semi_synthetic_metadata_schema.csv`, which is an explanatory field list.
+`task3_gru_core.py` implements model loading, features, calibration, and
+scoring. `task3_paths.py` maps checkout and Box paths. The imported
+`task3_common.py`, `task3_diag_levels_v7.py`, `task3_hf_velocity_v1.py`,
+`task3_gru_v2_vxfocus.py`, `task3_gru_trial_v2.py`,
+`task3_gru_readout_recal_v1.py`, and `task3_gru_partial_finetune_v1.py`
+provide shared training, feature, and calibration code.
 
-The runner does not retrain the five base GRUs and does not perform a k-labeled-ON-trial in-context comparison. It adapts on 20 same-day OFF trials and scores the 30 held-out query trials. The ridge scripts included here only score original and PARRM conditions; an additional dataset option would be needed to score ridge directly on 10x.
+Training, calibration, and ensemble files are under
+`task3_results/gru/{training,calibration,ensemble}/`.
+Validation and test outputs contain `sessions.csv` and `aggregate.csv`.
+The verifier writes `benchmark.csv` using archived comparators, with a
+score tolerance of 0.0001 and exact scored-bin counts.
+The older condition-specific runner writes to `task3_results/gru/recording_modes/`.
+The archived five-seed OFF R² is 0.204977 on validation and 0.197518 on test.
+
+The ensemble, older results runner, and multitask training script expose
+`--self-test`. If a checkout has workflows using an older layout, update
+their script paths to `task3/` and output paths to `task3_results/gru/`
+before scheduling them.

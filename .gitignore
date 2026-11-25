@@ -1,8 +1,16 @@
-# Raw and derived data stay local (~15 GB); only code is committed.
-data/
+# Raw and derived recordings stay local (~15 GB). Only the small, shareable artifacts are
+# committed: the Task 5 checkpoints (data/task5_runs, about 145 MB, no file over 4 MB), the
+# first Task 5 model's per-trial predictions (data/task5_predictions, about 37 MB), the
+# kinematics, and the READMEs and manifests that describe the data folders.
+/data/export_outputs/
+/data/features/
+/data/parrm_outputs/
+/data/semi_synthetic/
+/data/semisynthetic/
 
-# Script outputs: each person runs the code and keeps results locally.
-results/
+# Model checkpoints are large binaries; result CSVs in task3_results/ are committed.
+*.pt
+!data/task5_runs/**/*.pt
 
 # Course handout (kept locally, not part of the code)
 EECS-182-Project-Overview.pdf
@@ -31,3 +39,10 @@ task4_2_run/
 # Writeups, figures and generated reports stay local (LaTeX sources, PDFs, plots, diagrams).
 /reports/
 /docs/
+
+# Legacy local artifacts from the earlier baseline runs (parquet scores, tables, figures).
+/results/
+
+# Local-only dataset notes, superseded by docs/ (also local).
+/Notes.md
+/EECS182_file_map_261117.md

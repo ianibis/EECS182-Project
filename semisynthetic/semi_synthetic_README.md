@@ -26,13 +26,13 @@ means, not pooled-bin scores.
 
 Two different things in this repository are called "synthetic". They are unrelated:
 
-| | Semi-synthetic 10x (this folder) | Synthetic tones |
+| | Semi-synthetic 10x (this folder) | Synthetic frequencies |
 |---|---|---|
 | Added signal | `(scale - 1) x PARRM_artifact` | `strength x gain x sin(2 pi f t + phase)` |
 | Waveform | measured, stimulation-locked artifact estimate | pure sine |
 | Applied to | `/lfp` of stimulation-ON **recordings**, written to disk | stimulation-OFF **training** trials, in memory |
-| Purpose | harder artifact at test time | augmentation so a model learns to ignore a tone |
-| Code | `semisynthetic/EECS182_make_semisynthetic_h5.py` | `task4/utils.py`, `add_stimulation_tones` |
+| Purpose | harder artifact at test time | augmentation so a model learns to ignore a frequency |
+| Code | `semisynthetic/EECS182_make_semisynthetic_h5.py` | `task4/utils.py`, `add_synthetic_frequencies` |
 | Consumers | `task3/task3_gru_results.py --dataset amp10`, `task4_2_eegnet.ipynb` (arms cell) | `task4_2_eegnet.ipynb` section 4.2.6 only |
 
 The artifact is periodic at the AM rate — one period per 50 ms at 20 Hz, per ~333 ms at
@@ -107,14 +107,14 @@ template-shifted OFF training episodes proposed for the in-context model.
 
 ## Characterising the added term as 0-centred noise
 
-The variance characterisation behind `task4/results/amp10_noise_variance.csv` treats the added term
+The variance characterisation behind `task4_results/amp10_noise_variance.csv` treats the added term
 
     n_c(t) = (scale - 1) * artifact_c(t) = 9 * artifact_c(t)
 
 as a noise term, removes each channel's mean, and reports what is left. It runs on the
 stimulation-on samples only, since the artifact estimate is zero elsewhere. Outputs are
-`task4/results/amp10_noise_variance.csv` (per session), `amp10_noise_summary.csv` (median
-per AM frequency) and `results/fig_amp10_noise.png`; both CSVs are under `task4/results/`.
+`task4_results/amp10_noise_variance.csv` (per session), `amp10_noise_summary.csv` (median
+per AM frequency) and `results/fig_amp10_noise.png`; both CSVs are under `task4_results/`.
 
 Medians over the seven test sessions at each frequency:
 

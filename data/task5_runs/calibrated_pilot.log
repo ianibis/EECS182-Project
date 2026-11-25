@@ -1,0 +1,63 @@
+[calibrated_a0_seed1] 823,042 parameters, 6000 iterations
+[calibrated_a0_seed1] step   500  train 0.8950  holdout 0.9587  val R2 +0.1220  vs labels-only +0.0398  context gain +0.1094  1.0 min *
+[calibrated_a0_seed1] step  1000  train 0.8484  holdout 0.7789  val R2 +0.1474  vs labels-only +0.0651  context gain +0.0994  2.1 min *
+[calibrated_a0_seed1] step  1500  train 0.7967  holdout 0.8268  val R2 +0.1575  vs labels-only +0.0752  context gain +0.1027  3.1 min *
+[calibrated_a0_seed1] step  2000  train 0.7496  holdout 0.8452  val R2 +0.1504  vs labels-only +0.0682  context gain +0.1109  4.2 min
+[calibrated_a0_seed1] step  2500  train 0.7169  holdout 0.7962  val R2 +0.1572  vs labels-only +0.0750  context gain +0.1061  5.2 min
+[calibrated_a0_seed1] step  3000  train 0.6948  holdout 0.7944  val R2 +0.1460  vs labels-only +0.0637  context gain +0.1003  6.3 min
+[calibrated_a0_seed1] step  3500  train 0.6511  holdout 0.8276  val R2 +0.1418  vs labels-only +0.0595  context gain +0.1128  7.4 min
+[calibrated_a0_seed1] step  4000  train 0.6304  holdout 0.7972  val R2 +0.1412  vs labels-only +0.0590  context gain +0.1071  8.6 min
+[calibrated_a0_seed1] step  4500  train 0.6185  holdout 0.8130  val R2 +0.1405  vs labels-only +0.0582  context gain +0.1032  10.0 min
+[calibrated_a0_seed1] step  5000  train 0.5988  holdout 0.8286  val R2 +0.1373  vs labels-only +0.0551  context gain +0.1041  11.5 min
+[calibrated_a0_seed1] step  5500  train 0.5980  holdout 0.8360  val R2 +0.1371  vs labels-only +0.0549  context gain +0.1041  13.0 min
+[calibrated_a0_seed1] step  6000  train 0.5883  holdout 0.8917  val R2 +0.1364  vs labels-only +0.0542  context gain +0.1049  14.5 min
+[calibrated_a0.25_seed1] 823,042 parameters, 6000 iterations
+[calibrated_a0.25_seed1] step   500  train 0.9070  holdout 0.8004  val R2 +0.1286  vs labels-only +0.0464  context gain +0.0882  1.4 min *
+[calibrated_a0.25_seed1] step  1000  train 0.8423  holdout 0.7888  val R2 +0.1494  vs labels-only +0.0672  context gain +0.0975  2.9 min *
+[calibrated_a0.25_seed1] step  1500  train 0.8004  holdout 0.7898  val R2 +0.1436  vs labels-only +0.0614  context gain +0.1005  4.4 min
+[calibrated_a0.25_seed1] step  2000  train 0.7690  holdout 0.7629  val R2 +0.1537  vs labels-only +0.0715  context gain +0.1064  5.9 min *
+[calibrated_a0.25_seed1] step  2500  train 0.7356  holdout 0.8662  val R2 +0.1481  vs labels-only +0.0659  context gain +0.1035  7.3 min
+[calibrated_a0.25_seed1] step  3000  train 0.6944  holdout 0.8135  val R2 +0.1492  vs labels-only +0.0669  context gain +0.1006  8.6 min
+[calibrated_a0.25_seed1] step  3500  train 0.6614  holdout 0.8022  val R2 +0.1409  vs labels-only +0.0586  context gain +0.1071  9.6 min
+[calibrated_a0.25_seed1] step  4000  train 0.6378  holdout 0.8363  val R2 +0.1410  vs labels-only +0.0587  context gain +0.1077  10.7 min
+[calibrated_a0.25_seed1] step  4500  train 0.6137  holdout 0.8420  val R2 +0.1391  vs labels-only +0.0569  context gain +0.1027  12.2 min
+[calibrated_a0.25_seed1] step  5000  train 0.5992  holdout 0.8157  val R2 +0.1345  vs labels-only +0.0523  context gain +0.1064  13.6 min
+[calibrated_a0.25_seed1] step  5500  train 0.5962  holdout 0.8661  val R2 +0.1354  vs labels-only +0.0532  context gain +0.1060  15.1 min
+[calibrated_a0.25_seed1] step  6000  train 0.5872  holdout 0.7761  val R2 +0.1347  vs labels-only +0.0525  context gain +0.1065  16.2 min
+[calibrated_a0.5_seed1] 823,042 parameters, 6000 iterations
+[calibrated_a0.5_seed1] step   500  train 0.9103  holdout 0.8035  val R2 +0.1307  vs labels-only +0.0484  context gain +0.0938  1.4 min *
+[calibrated_a0.5_seed1] step  1000  train 0.8504  holdout 0.8053  val R2 +0.1483  vs labels-only +0.0661  context gain +0.0987  2.8 min *
+[calibrated_a0.5_seed1] step  1500  train 0.8119  holdout 0.7852  val R2 +0.1390  vs labels-only +0.0568  context gain +0.1029  4.3 min
+[calibrated_a0.5_seed1] step  2000  train 0.7833  holdout 0.7787  val R2 +0.1540  vs labels-only +0.0718  context gain +0.1041  5.3 min *
+[calibrated_a0.5_seed1] step  2500  train 0.7519  holdout 0.8682  val R2 +0.1525  vs labels-only +0.0702  context gain +0.1083  6.3 min
+[calibrated_a0.5_seed1] step  3000  train 0.7131  holdout 0.8317  val R2 +0.1472  vs labels-only +0.0649  context gain +0.0964  7.4 min
+[calibrated_a0.5_seed1] step  3500  train 0.6848  holdout 0.7926  val R2 +0.1465  vs labels-only +0.0642  context gain +0.1032  8.4 min
+[calibrated_a0.5_seed1] step  4000  train 0.6622  holdout 0.8468  val R2 +0.1473  vs labels-only +0.0651  context gain +0.1081  9.5 min
+[calibrated_a0.5_seed1] step  4500  train 0.6376  holdout 0.8310  val R2 +0.1441  vs labels-only +0.0619  context gain +0.1045  10.6 min
+[calibrated_a0.5_seed1] step  5000  train 0.6254  holdout 0.8174  val R2 +0.1432  vs labels-only +0.0610  context gain +0.1067  11.6 min
+[calibrated_a0.5_seed1] step  5500  train 0.6232  holdout 0.8607  val R2 +0.1437  vs labels-only +0.0615  context gain +0.1074  12.7 min
+[calibrated_a0.5_seed1] step  6000  train 0.6161  holdout 0.7683  val R2 +0.1432  vs labels-only +0.0610  context gain +0.1075  13.8 min
+seed 1 done
+seed 1 done
+seed 1 done
+                                              0                       1                      2
+alpha_max                                   0.0                    0.25                    0.5
+run                         calibrated_a0_seed1  calibrated_a0.25_seed1  calibrated_a0.5_seed1
+best_val_r2                              0.1575                  0.1537                  0.154
+reference_val_r2                         0.1532                  0.1532                 0.1532
+r2_k20_recorded                          0.2117                  0.2094                 0.2107
+labels_only_k20_recorded                 0.1122                  0.1122                 0.1122
+rotated_drop_recorded                     0.085                  0.0905                 0.0905
+rotated_ci_low_recorded                  0.0489                  0.0486                 0.0493
+rotated_ci_high_recorded                 0.1245                  0.1377                 0.1358
+zero_drop_recorded                       0.0722                  0.0582                 0.0768
+r2_k20_amp10                             0.1819                   0.176                  0.172
+labels_only_k20_amp10                    0.1122                  0.1122                 0.1122
+rotated_drop_amp10                       0.0577                  0.0548                 0.0548
+rotated_ci_low_amp10                      0.029                  0.0214                 0.0227
+rotated_ci_high_amp10                    0.0997                  0.1042                 0.1012
+zero_drop_amp10                          0.0674                  0.0407                 0.0561
+gate_a_uses_context_signal                 True                    True                   True
+gate_b_no_collapse                         True                    True                   True
+passed                                     True                    True                   True
+PILOT RESULT: alpha_max 0 passed and was chosen

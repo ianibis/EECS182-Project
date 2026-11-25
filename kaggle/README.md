@@ -2,7 +2,7 @@
 
 | File | Role |
 |---|---|
-| `train_task4_2.py` | the whole of task 4.2 training: model, five seeds, plain and tone-augmented, scoring |
+| `train_task4_2.py` | the whole of task 4.2 training: model, five seeds, plain and synthetic-frequency-augmented, scoring |
 | `build_dataset.py` | assembles `dataset/` with the 36 sessions the decoders touch and the code they import |
 | `build_kernel.py` | writes `kernel/` (notebook + metadata) with the training script embedded |
 
@@ -32,8 +32,8 @@ whatever the mount layout is. Outputs always go to `/kaggle/working/task4_2`.
 
 `/kaggle/working/task4_2/`
 
-- `checkpoints/task4_2_{eegnet,eegnet_stimulation_tones}_seed{0..4}.pt`
-- `training_logs/{eegnet,eegnet_stimulation_tones}_seed{0..4}.json`
+- `checkpoints/task4_2_{eegnet,eegnet_synthetic_frequencies}_seed{0..4}.pt`
+- `training_logs/{eegnet,eegnet_synthetic_frequencies}_seed{0..4}.json`
 - `task4_2_eegnet_off.csv` — one row per method, session and seed
 - `task4_2_summary.csv` — mean clean and stimulated R² per method
 

@@ -337,7 +337,7 @@ def build_svg(data):
     callouts = [
         ("R^2 (axis-averaged)", ["R^2 = (R^2_vx + R^2_vy)/2", "per-day mean of R^2"], "metric"),
         ("5-seed ensemble", ["v_ens = (1/5) sum_s v_s", "score mean predictions"], "store"),
-        ("Tones", ["synthetic 3/20 Hz sine", "clean training only"], "batch"),
+        ("Frequencies", ["synthetic 3/20 Hz sine", "clean training only"], "batch"),
         ("Why five test days?", ["test split is 5 days", "all per-day figures"], "split"),
     ]
     for index, (title, lines, kind) in enumerate(callouts):

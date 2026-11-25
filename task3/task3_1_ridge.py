@@ -13,7 +13,7 @@
 Run (from the repository root):
       python task3/task3_1_ridge.py                          (9 earlier bins of history)
       python task3/task3_1_ridge.py --lags 19                (1 s of feature history)
-Writes results/task3/task3_1_lambda_search_lmp_bands_lags<N>.csv and
+Writes task3_results/task3_1_lambda_search_lmp_bands_lags<N>.csv and
 task3_1_test_results_lmp_bands_lags<N>.csv.
 See task3_1_ridge_within_session.py for the same decoder fit within single sessions.
 """

@@ -26,7 +26,7 @@ METADATA = dict(
 INTRO = """# Task 4.2 — CausalEEGNet on 1 kHz LFP
 
 Trains the task 4.2 decoder from `task4/task4_2_eegnet.ipynb` twice — once on plain
-stimulation-off trials and once with synthetic 3/20 Hz tones added — five randomised seeds
+stimulation-off trials and once with synthetic 3/20 Hz frequencies added — five randomised seeds
 each, then scores every stimulated test session on its own input and on the same day's
 stimulation-off recording.
 

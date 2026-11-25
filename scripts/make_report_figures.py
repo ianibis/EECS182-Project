@@ -36,12 +36,12 @@ sys.path.insert(0, os.path.join(ROOT, 'task4'))
 import utils as U  # noqa: E402
 
 FIGDIR = os.path.join(ROOT, 'reports', 'figures')
-SCORES = os.path.join(ROOT, 'task4', 'results', 'task4_2_eegnet_off.csv')
+SCORES = os.path.join(ROOT, 'task4_results', 'task4_2_eegnet_off.csv')
 SPLITS = json.load(open(os.path.join(ROOT, 'splits.json')))
 
 SEEDS = [0, 1, 2, 3, 4]
 COLORS = {'single seed': '#2f6fdb', '5-seed ensemble': '#e07b00',
-          'EEGNet + tones': '#2e8b57'}
+          'EEGNet + synth. freq.': '#2e8b57'}
 SEED_COLORS = ['#2f6fdb', '#e07b00', '#2e8b57', '#c62828', '#7b4fa8']
 R2_LABEL = '$R^2$ (average of the $v_x$ and $v_y$ scores)'
 
@@ -59,7 +59,7 @@ def per_day(frame):
     return {label: frame[frame.method == method].groupby('day')[['r2_ave', 'r2_off_ave']].mean()
             for label, method in (('single seed', 'eegnet'),
                                   ('5-seed ensemble', 'eegnet_ensemble'),
-                                  ('EEGNet + tones', 'eegnet_stimulation_tones'))}
+                                  ('EEGNet + synth. freq.', 'eegnet_synthetic_frequencies'))}
 
 
 # --------------------------------------------------------------------------- figure 4
@@ -197,9 +197,9 @@ def r2rmse_figure():
     days = sorted(load_scores().day.unique())
     rmse = {'mean predictor': [65.0, 61.0, 68.0, 63.0, 65.0],
             '5-seed ensemble': [65.6, 58.0, 63.2, 61.6, 64.5],
-            'EEGNet + tones': [63.4, 58.8, 65.5, 62.0, 64.9]}
+            'EEGNet + synth. freq.': [63.4, 58.8, 65.5, 62.0, 64.9]}
     colours = {'mean predictor': '#7a828a', '5-seed ensemble': '#2f6fdb',
-               'EEGNet + tones': '#2e8b57'}
+               'EEGNet + synth. freq.': '#2e8b57'}
     x = np.arange(len(days))
     width = 0.26
     for index, (label, values) in enumerate(rmse.items()):

@@ -12,6 +12,7 @@ import sys
 from dataclasses import dataclass
 from functools import lru_cache
 
+import h5py
 import numpy as np
 import pandas as pd
 
@@ -23,21 +24,17 @@ if REPO not in sys.path:  # the shared loader and features scripts live at the r
 import EECS182_NHP_data_loader as L  # noqa: E402
 import EECS182_NHP_features as F     # noqa: E402
 
-DATA = os.path.abspath(os.path.expanduser(os.environ.get('TASK3_DATA_ROOT', os.path.join(REPO, 'data'))))
-RESULTS_DIR = os.path.join(REPO, 'results', 'task3')
+from task3_paths import DATA_ROOT, data_paths, metadata_path
 
-# The loader's defaults assume the original folder names; point it at data/.
-PATHS = L.Paths(
-    root=DATA,  # features are read from data/features/<variant>/
-    export_dir=os.path.join(DATA, 'export_outputs', 'h5_export_outputs'),
-    trial_dir=os.path.join(DATA, 'export_outputs', 'trials'),
-    parrm_dir=os.path.join(DATA, 'parrm_outputs', 'parrm_h5'),
-    kin_dir=os.path.join(DATA, 'kinematics_v3', 'bins50ms'),
-)
+RESULTS_DIR = os.path.join(REPO, 'task3_results')
+PATHS = data_paths(DATA_ROOT)
+DATA = PATHS.root
+META = str(metadata_path(DATA_ROOT, 'splits.json').parent)
 
-# Trial window and feature history (README defaults): 0.5 s before the go cue
-# to 1.5 s after it (40 bins of 50 ms), each bin also seeing the 9 bins before.
-ALIGN, PRE, POST, N_LAGS = 't_go', 0.5, 1.5, 9
+# Trial window and feature history: 0.5 s before the go cue to 1.5 s after it
+# (40 bins of 50 ms), each bin also seeing the 19 bins before (1 s including the
+# current bin, as in the GRU). Earlier runs used 9; pass --lags 9 to reproduce them.
+ALIGN, PRE, POST, N_LAGS = 't_go', 0.5, 1.5, 19
 KIN_COLS = ('Index_vx_cm', 'Index_vy_cm')  # fingertip velocity, cm/s
 
 # Normalized features are clipped to ±CLIP_Z so a single artifact cannot
@@ -49,18 +46,22 @@ CLIP_Z = 10.0
 # decoder was dropped: it scored lower, validation R² 0.021 vs. 0.035 with 9 lags.)
 FEATURES = list(F.FEATURE_NAMES)  # ['lmp', 'pow_1_4', ..., 'pow_130_200']
 FEATURE_SET = 'lmp+bands'         # label written to the result files
+FEATURE_SETS = {
+    'bands': [name for name in FEATURES if name.startswith('pow_')],
+    'lmp+bands': FEATURES,
+}
 
 
 # ---------------------------------------------------------------- metadata
 
 @lru_cache(maxsize=None)
 def manifest():
-    return pd.read_csv(os.path.join(REPO, 'EECS182_data_manifest.csv')).set_index('session', drop=False)
+    return pd.read_csv(metadata_path(DATA_ROOT, 'EECS182_data_manifest.csv')).set_index('session', drop=False)
 
 
 @lru_cache(maxsize=None)
 def splits():
-    with open(os.path.join(REPO, 'splits.json')) as file:
+    with open(metadata_path(DATA_ROOT, 'splits.json')) as file:
         return json.load(file)
 
 
@@ -95,8 +96,11 @@ def trial_rows(session, part):
     'train' / 'val': training sessions, without / only the held-out block.
     'pool' / 'query': validation and test sessions, blocks 1-2 / blocks 3-5.
     'all': every included trial.
+    A list of trial numbers (e.g. a k-trial draw from splits.json) selects those trials.
     """
     included = _included_trials(session)
+    if not isinstance(part, str):
+        return included[included.trial.isin(list(part))]
     if part == 'all':
         return included
     if part in ('train', 'val'):
@@ -112,34 +116,106 @@ def kinematics(session):
     return L.load_kinematics(session, PATHS)
 
 
+# ---------------------------------------------------------------- recordings and the 200-400 Hz band
+
+def loader_manifest():
+    """The manifest in the form the data loader expects (a 'session' column, default index)."""
+    return manifest().reset_index(drop=True)
+
+
+def load_recording(session, variant):
+    """The LFP (35 fixed channels, recording reference) behind a feature variant:
+    'export_none' (recorded), 'parrm_none' (PARRM-cleaned) or 'parrm_amp10' (10x artifact)."""
+    if variant == 'parrm_amp10':
+        from task3_make_amp10_features import amp10_recording  # imports this module
+        return amp10_recording(session)[0]
+    source = {'export_none': 'export', 'parrm_none': 'parrm'}[variant]
+    return L.load_session(session, PATHS, source=source, reference='none', manifest=loader_manifest())
+
+
+# The GRU's ninth feature per channel: log power in 200-400 Hz over a 256 ms window ending at
+# each bin's end (task3_gru_core.py, BAND and WINDOW), computed and normalized the same way.
+HF_BAND, HF_WINDOW = (200, 400), 0.256
+HF_DIRS = {'export_none': 'hf200_400_export', 'parrm_none': 'hf200_400_parrm',
+           'parrm_amp10': 'hf200_400_amp10'}
+
+
+def hf_power(session, variant):
+    """200-400 Hz log power, (bins, channels), with its bin and channel IDs.
+    Computed from the recording and cached in <DATA>/features/<HF_DIRS[variant]>/ the first time."""
+    path = os.path.join(DATA, 'features', HF_DIRS[variant], f'{session}.h5')
+    if not os.path.exists(path):
+        rec = load_recording(session, variant)
+        bin_ids = np.arange(int(np.ceil(rec.t[0] / L.BIN_S - 1e-9)), int(np.floor(rec.t[-1] / L.BIN_S + 1e-9)))
+        ends = np.searchsorted(rec.t, (bin_ids + 1) * L.BIN_S - 0.5 / rec.fs) - 1
+        power = F._band_power(rec.lfp, ends, rec.fs, HF_WINDOW, *HF_BAND)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with h5py.File(path + '.tmp', 'w') as file:
+            file.create_dataset('bin_id', data=bin_ids)
+            file.create_dataset('channel_ids', data=rec.channels)
+            file.create_dataset('logpow', data=power, compression='gzip')
+            file.attrs['band_hz'] = HF_BAND
+            file.attrs['window_s'] = HF_WINDOW
+        os.replace(path + '.tmp', path)
+        print(f'    made {os.path.relpath(path, DATA)}', flush=True)
+    with h5py.File(path, 'r') as file:
+        return file['bin_id'][:], file['channel_ids'][:], file['logpow'][:].T.astype(np.float32)
+
+
 # ---------------------------------------------------------------- arrays
 
-def session_arrays(session, variant, part, n_lags=N_LAGS):
+def session_arrays(session, variant, part, n_lags=N_LAGS, hf=False, return_trials=False, *, feature_set=None):
     """Decoder inputs and target velocities for one session's trials.
 
     Returns X (n, d) and Y (n, 2) with one row per 50 ms bin that has both
     finite features and finite velocity. d = (n_lags + 1) * channels * 8
-    features (LMP + 7 band powers): each bin sees its own features plus those
-    of the n_lags bins before it.
+    features (LMP + 7 band powers; 9 with hf=True, adding 200-400 Hz power as
+    in the GRU): each bin sees its own features plus those of the n_lags bins
+    before it.
 
     Features are z-scored within the session, then clipped to ±CLIP_Z.
     Validation and test sessions take the statistics from their calibration
     pool (blocks 1-2) only, so the query trials are never used for anything
     but the final R².
+
+    With return_trials=True, also returns each row's trial number, so subsets
+    of trials can be taken without cutting the windows again.
     """
     norm_rows = trial_rows(session, 'pool') if session in splits()['calibration'] else None
     feat = F.load_features(session, PATHS, variant=variant, normalize=True, trials=norm_rows)
-    assert feat['feature_names'] == FEATURES
-    feat = dict(feat, X=np.clip(feat['X'], -CLIP_Z, CLIP_Z))  # NaN stays NaN
+    if feature_set is None:
+        assert feat['feature_names'] == FEATURES
+    else:
+        names = FEATURE_SETS[feature_set]
+        indices = [feat['feature_names'].index(name) for name in names]
+        feat = dict(feat, X=feat['X'][:, :, indices], feature_names=names)
+    X = feat['X']
+    if hf:
+        bin_ids, channels, power = hf_power(session, variant)
+        if not (np.array_equal(bin_ids, feat['bin_id']) and np.array_equal(channels, feat['channel_ids'])):
+            raise ValueError(f'{session}: 200-400 Hz bins or channels differ from the other features')
+        start, stop = feat['norm']['window']  # same normalization window and rule as the other features
+        inside = (bin_ids * L.BIN_S >= start) & ((bin_ids + 1) * L.BIN_S <= stop)
+        median = np.nanmedian(power[inside], axis=0)
+        spread = 1.4826 * np.nanmedian(np.abs(power[inside] - median), axis=0)
+        spread[~(spread > 0)] = 1.0
+        X = np.concatenate([X, ((power - median) / spread)[:, :, None]], axis=2)
+    feat = dict(feat, X=np.clip(X, -CLIP_Z, CLIP_Z))  # NaN stays NaN
 
-    X, Y, valid, _ = F.trial_arrays(feat, trial_rows(session, part), kin=kinematics(session),
+    rows = trial_rows(session, part)
+    X, Y, valid, _ = F.trial_arrays(feat, rows, kin=kinematics(session),
                                     align=ALIGN, pre=PRE, post=POST, n_lags=n_lags, kin_cols=KIN_COLS)
+    if return_trials:
+        trial_ids = np.repeat(rows.trial.to_numpy()[:, None], valid.shape[1], axis=1)
+        return X[valid], Y[valid], trial_ids[valid]
     return X[valid], Y[valid]
 
 
-def stack_arrays(session_list, variant, part, n_lags=N_LAGS):
+def stack_arrays(session_list, variant, part, n_lags=N_LAGS, hf=False, *, feature_set=None):
     """session_arrays() for several sessions, concatenated."""
-    pairs = [session_arrays(s, variant, part, n_lags) for s in session_list]
+    options = {} if feature_set is None else {'feature_set': feature_set}
+    pairs = [session_arrays(s, variant, part, n_lags=n_lags, hf=hf, **options)
+             for s in session_list]
     return np.concatenate([x for x, _ in pairs]), np.concatenate([y for _, y in pairs])
 
 
@@ -208,6 +284,38 @@ def ridge_path(X, Y, lambdas):
     return models
 
 
+# Penalties for refitting a trained decoder on a few labeled trials (SameDayAdapter):
+# 1 to 10^8 in half decades, then inf = keep the trained decoder unchanged.
+MUS = np.concatenate([np.logspace(0, 8, 17), [np.inf]])
+
+
+class SameDayAdapter:
+    """Refits a trained ridge model on a few labeled bins from one session.
+
+    With X, Y centered on those bins, W = W0 + D where D minimizes
+    ||(Y - X W0) - X D||² + mu ||D||², i.e. D = Xᵀ (X Xᵀ + mu I)⁻¹ (Y - X W0).
+    The intercept is refit on the same bins. With fewer bins than inputs this
+    uses the eigendecomposition X Xᵀ = Q E Qᵀ, computed once for every mu.
+    Used for same-day OFF calibration (task3_1_ridge_gru_matched.py) and for
+    the traditional pipeline's refit on k stimulation trials (task3_2_parrm.py).
+    """
+
+    def __init__(self, X, Y):
+        self.x_mean = X.mean(axis=0, dtype=np.float64)
+        self.y_mean = Y.mean(axis=0, dtype=np.float64)
+        self.Xc = X.astype(np.float64) - self.x_mean
+        self.Yc = Y.astype(np.float64) - self.y_mean
+        e, self.Q = np.linalg.eigh(self.Xc @ self.Xc.T)
+        self.e = np.maximum(e, 0.0)
+
+    def fit(self, base, mu):
+        if np.isinf(mu):
+            return base
+        residual = self.Yc - self.Xc @ base.W
+        W = base.W + self.Xc.T @ (self.Q @ ((self.Q.T @ residual) / (self.e + mu)[:, None]))
+        return RidgeModel(W=W, b=self.y_mean - self.x_mean @ W, lam=base.lam)
+
+
 def r2(Y, Y_pred):
     """R² for each velocity axis (vx, vy).
 
@@ -226,12 +334,13 @@ LAMBDAS = np.logspace(0, 6, 13)                # 1 to 10^6, half-decade steps
 PARRM_VARIANT = {'export_none': 'parrm_none', 'export_car': 'parrm_car'}  # cleaned counterpart
 
 
-def run_tag(n_lags):
+def run_tag(n_lags, *, feature_set=None):
     """File-name tag for one setting, e.g. 'lmp_bands_lags9'."""
-    return f"{FEATURE_SET.replace('+', '_')}_lags{n_lags}"
+    name = FEATURE_SET if feature_set is None else feature_set
+    return f"{name.replace('+', '_')}_lags{n_lags}"
 
 
-def fit_off_decoder(n_lags=N_LAGS):
+def fit_off_decoder(n_lags=N_LAGS, *, feature_set=None):
     """Train the OFF decoder and choose λ and the reference on the validation days.
 
     Fits on the 'train' trials of the training-day no-stim sessions (July 11
@@ -248,17 +357,18 @@ def fit_off_decoder(n_lags=N_LAGS):
     print(f'Training on {len(train_sessions)} OFF sessions (training days, held-out block excluded); '
           f'choosing lambda on {len(val_sessions)} validation-day OFF sessions.')
 
+    options = {} if feature_set is None else {'feature_set': feature_set}
     rows, fitters = [], {}
     for variant in REFERENCES:
-        X, Y = stack_arrays(train_sessions, variant, 'train', n_lags)
+        X, Y = stack_arrays(train_sessions, variant, 'train', n_lags, **options)
         fitters[variant] = RidgeFitter(X, Y)
         print(f'  {variant}: {X.shape[0]:,} training bins x {X.shape[1]:,} inputs')
         del X, Y
-        val = {s: session_arrays(s, variant, 'query', n_lags) for s in val_sessions}
+        val = {s: session_arrays(s, variant, 'query', n_lags, **options) for s in val_sessions}
         for lam in LAMBDAS:
             model = fitters[variant].fit(lam)
             per_session = {s: r2(Yv, model.predict(Xv)).mean() for s, (Xv, Yv) in val.items()}
-            rows.append(dict(feature_set=FEATURE_SET, n_lags=n_lags, reference=variant, lam=lam,
+            rows.append(dict(feature_set=feature_set or FEATURE_SET, n_lags=n_lags, reference=variant, lam=lam,
                              val_r2_mean=np.mean(list(per_session.values())),
                              **{f'val_r2_{s}': v for s, v in per_session.items()}))
 
@@ -282,8 +392,13 @@ def print_lambda_search(search):
     print(f'Chosen: reference = {chosen.reference}, lambda = {chosen.lam:g}')
 
 
-def score_session(model, session, variant, n_lags=N_LAGS):
+def score_session(model, session, variant, n_lags=N_LAGS, hf=False):
     """R² of a fitted decoder on one session's query trials, blocks 3-5 (mean and per axis)."""
-    X, Y = session_arrays(session, variant, 'query', n_lags)
+    X, Y = session_arrays(session, variant, 'query', n_lags, hf)
+    return score_arrays(model, X, Y)
+
+
+def score_arrays(model, X, Y):
+    """R² of a fitted decoder on given arrays (mean of vx and vy, and per axis)."""
     r2_vx, r2_vy = r2(Y, model.predict(X))
     return dict(r2=(r2_vx + r2_vy) / 2, r2_vx=r2_vx, r2_vy=r2_vy, n_bins=len(X))

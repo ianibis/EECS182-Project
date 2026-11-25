@@ -1,0 +1,13 @@
+{
+  "name": "smoke",
+  "best_val_r2": 0.06617609858512878,
+  "seed": 1,
+  "iterations": 100,
+  "batch_size": 8,
+  "learning_rate": 0.0003,
+  "warmup_iterations": 10,
+  "weight_decay": 0.01,
+  "grad_clip": 1.0,
+  "eval_every": 50,
+  "max_context": 20
+}

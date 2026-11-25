@@ -1,0 +1,85 @@
+val: Butters-250523-095602 gru_off_seed1, 153 unique fits
+val: Butters-250523-095602 mlp_off, 153 unique fits
+val: Butters-250523-095602 mlp_on_1x, 153 unique fits
+val: Butters-250523-095602 mlp_on_10x, 153 unique fits
+val: Butters-250606-101930 gru_off_seed1, 151 unique fits
+val: Butters-250606-101930 mlp_off, 151 unique fits
+val: Butters-250606-101930 mlp_on_1x, 151 unique fits
+val: Butters-250606-101930 mlp_on_10x, 151 unique fits
+val: Butters-250624-100213 gru_off_seed1, 153 unique fits
+val: Butters-250624-100213 mlp_off, 153 unique fits
+val: Butters-250624-100213 mlp_on_1x, 153 unique fits
+val: Butters-250624-100213 mlp_on_10x, 153 unique fits
+        model  query_data context_source  k     r2_vx    r2_vy       r2  r2_time  neural_gain
+gru_off_seed1 parrm_amp10           none  0 -0.083926 0.118679 0.017377 0.031479    -0.014102
+gru_off_seed1 parrm_amp10            off  2 -0.078847 0.118408 0.019781 0.031479    -0.011698
+gru_off_seed1 parrm_amp10            off  5 -0.074022 0.124934 0.025456 0.031479    -0.006023
+gru_off_seed1 parrm_amp10            off 10 -0.069769 0.126551 0.028391 0.031479    -0.003088
+gru_off_seed1 parrm_amp10            off 20 -0.064247 0.132024 0.033889 0.031479     0.002410
+gru_off_seed1 parrm_amp10             on  2 -0.080029 0.119382 0.019676 0.031479    -0.011803
+gru_off_seed1 parrm_amp10             on  5 -0.075115 0.125027 0.024956 0.031479    -0.006523
+gru_off_seed1 parrm_amp10             on 10 -0.070881 0.130260 0.029690 0.031479    -0.001789
+gru_off_seed1 parrm_amp10             on 20 -0.062049 0.142460 0.040205 0.031479     0.008727
+gru_off_seed1 recorded_on           none  0 -0.072620 0.168990 0.048185 0.031479     0.016706
+gru_off_seed1 recorded_on            off  2 -0.060554 0.172116 0.055781 0.031479     0.024302
+gru_off_seed1 recorded_on            off  5 -0.052623 0.183073 0.065225 0.031479     0.033747
+gru_off_seed1 recorded_on            off 10 -0.039646 0.191044 0.075699 0.031479     0.044220
+gru_off_seed1 recorded_on            off 20 -0.026151 0.200235 0.087042 0.031479     0.055564
+gru_off_seed1 recorded_on             on  2 -0.067761 0.168848 0.050543 0.031479     0.019064
+gru_off_seed1 recorded_on             on  5 -0.063025 0.175533 0.056254 0.031479     0.024775
+gru_off_seed1 recorded_on             on 10 -0.054368 0.184525 0.065078 0.031479     0.033599
+gru_off_seed1 recorded_on             on 20 -0.040530 0.203203 0.081336 0.031479     0.049858
+      mlp_off parrm_amp10           none  0 -0.063800 0.143567 0.039883 0.031479     0.008405
+      mlp_off parrm_amp10            off  2 -0.063208 0.128832 0.032812 0.031479     0.001333
+      mlp_off parrm_amp10            off  5 -0.054766 0.133545 0.039390 0.031479     0.007911
+      mlp_off parrm_amp10            off 10 -0.055803 0.129344 0.036771 0.031479     0.005292
+      mlp_off parrm_amp10            off 20 -0.062139 0.124664 0.031262 0.031479    -0.000216
+      mlp_off parrm_amp10             on  2 -0.062215 0.135103 0.036444 0.031479     0.004966
+      mlp_off parrm_amp10             on  5 -0.052889 0.144580 0.045846 0.031479     0.014367
+      mlp_off parrm_amp10             on 10 -0.042479 0.150815 0.054168 0.031479     0.022689
+      mlp_off parrm_amp10             on 20 -0.032372 0.160447 0.064037 0.031479     0.032559
+      mlp_off recorded_on           none  0 -0.057376 0.173829 0.058227 0.031479     0.026748
+      mlp_off recorded_on            off  2 -0.049164 0.160133 0.055484 0.031479     0.024005
+      mlp_off recorded_on            off  5 -0.035866 0.166373 0.065253 0.031479     0.033775
+      mlp_off recorded_on            off 10 -0.023912 0.163276 0.069682 0.031479     0.038203
+      mlp_off recorded_on            off 20 -0.011496 0.161618 0.075061 0.031479     0.043582
+      mlp_off recorded_on             on  2 -0.049107 0.167082 0.058987 0.031479     0.027509
+      mlp_off recorded_on             on  5 -0.038008 0.179438 0.070715 0.031479     0.039236
+      mlp_off recorded_on             on 10 -0.019973 0.188763 0.084395 0.031479     0.052916
+      mlp_off recorded_on             on 20  0.002180 0.204621 0.103401 0.031479     0.071922
+   mlp_on_10x parrm_amp10           none  0  0.006118 0.174904 0.090511 0.065541     0.024970
+   mlp_on_10x parrm_amp10            off  2  0.009812 0.167366 0.088589 0.065541     0.023048
+   mlp_on_10x parrm_amp10            off  5  0.016089 0.170248 0.093168 0.065541     0.027627
+   mlp_on_10x parrm_amp10            off 10  0.018430 0.166825 0.092628 0.065541     0.027087
+   mlp_on_10x parrm_amp10            off 20  0.016315 0.161696 0.089005 0.065541     0.023464
+   mlp_on_10x parrm_amp10             on  2  0.011446 0.169565 0.090506 0.065541     0.024965
+   mlp_on_10x parrm_amp10             on  5  0.015622 0.175284 0.095453 0.065541     0.029912
+   mlp_on_10x parrm_amp10             on 10  0.022449 0.178957 0.100703 0.065541     0.035162
+   mlp_on_10x parrm_amp10             on 20  0.027646 0.184801 0.106223 0.065541     0.040682
+   mlp_on_10x recorded_on           none  0  0.007574 0.185796 0.096685 0.065541     0.031144
+   mlp_on_10x recorded_on            off  2  0.016989 0.182443 0.099716 0.065541     0.034175
+   mlp_on_10x recorded_on            off  5  0.025469 0.186894 0.106182 0.065541     0.040641
+   mlp_on_10x recorded_on            off 10  0.034973 0.184615 0.109794 0.065541     0.044253
+   mlp_on_10x recorded_on            off 20  0.044782 0.182692 0.113737 0.065541     0.048196
+   mlp_on_10x recorded_on             on  2  0.017352 0.184112 0.100732 0.065541     0.035191
+   mlp_on_10x recorded_on             on  5  0.024537 0.194099 0.109318 0.065541     0.043777
+   mlp_on_10x recorded_on             on 10  0.038487 0.203075 0.120781 0.065541     0.055240
+   mlp_on_10x recorded_on             on 20  0.052099 0.216488 0.134294 0.065541     0.068753
+    mlp_on_1x parrm_amp10           none  0 -0.021382 0.140310 0.059464 0.065541    -0.006077
+    mlp_on_1x parrm_amp10            off  2 -0.020863 0.134454 0.056795 0.065541    -0.008746
+    mlp_on_1x parrm_amp10            off  5 -0.010399 0.140046 0.064824 0.065541    -0.000717
+    mlp_on_1x parrm_amp10            off 10 -0.009560 0.137934 0.064187 0.065541    -0.001354
+    mlp_on_1x parrm_amp10            off 20 -0.012717 0.138659 0.062971 0.065541    -0.002570
+    mlp_on_1x parrm_amp10             on  2 -0.013797 0.141950 0.064076 0.065541    -0.001465
+    mlp_on_1x parrm_amp10             on  5 -0.005680 0.149930 0.072125 0.065541     0.006584
+    mlp_on_1x parrm_amp10             on 10  0.004704 0.158974 0.081839 0.065541     0.016298
+    mlp_on_1x parrm_amp10             on 20  0.015405 0.168137 0.091771 0.065541     0.026230
+    mlp_on_1x recorded_on           none  0  0.013613 0.210962 0.112288 0.065541     0.046747
+    mlp_on_1x recorded_on            off  2  0.022399 0.206226 0.114313 0.065541     0.048772
+    mlp_on_1x recorded_on            off  5  0.036061 0.213528 0.124794 0.065541     0.059253
+    mlp_on_1x recorded_on            off 10  0.048565 0.213283 0.130924 0.065541     0.065383
+    mlp_on_1x recorded_on            off 20  0.065486 0.217232 0.141359 0.065541     0.075818
+    mlp_on_1x recorded_on             on  2  0.025105 0.210993 0.118049 0.065541     0.052508
+    mlp_on_1x recorded_on             on  5  0.034184 0.217074 0.125629 0.065541     0.060088
+    mlp_on_1x recorded_on             on 10  0.050889 0.226072 0.138480 0.065541     0.072939
+    mlp_on_1x recorded_on             on 20  0.070387 0.238515 0.154451 0.065541     0.088910

@@ -68,7 +68,7 @@ U.TRAINING_LOG_DIR = os.path.join(OUT, "training_logs")
 for folder in (U.CHECKPOINT_DIR, U.TRAINING_LOG_DIR):
     os.makedirs(folder, exist_ok=True)
 
-# Winning row of task4/results/eegnet_sweep.csv; see the report for why it is not a hard win.
+# Winning row of task4_results/eegnet_sweep.csv; see the report for why it is not a hard win.
 SETTINGS = dict(
     temporal_filters=8,
     depth_multiplier=2,
@@ -136,7 +136,7 @@ def main():
 
     rows = train_run(train_data, U.EEGNET_METHOD, validation_data, test_pairs)
     rows += train_run(
-        U.add_stimulation_tones(train_data, seed=SEEDS[0]),
+        U.add_synthetic_frequencies(train_data, seed=SEEDS[0]),
         U.EEGNET_FREQ_AUGMENTATION,
         validation_data,
         test_pairs,

@@ -1,6 +1,7 @@
 # Task 4
 
-Self-contained directory containing shared utilities, three sub-task notebooks, and local output folders (`results/`, `checkpoints/`, `training_logs/`, `figures/`).
+Self-contained directory containing shared utilities, three sub-task notebooks, and local output folders (`checkpoints/`, `training_logs/`, `figures/`); CSVs land in the
+repository-level `task4_results/`.
 
 ```text
 task4/
@@ -47,12 +48,12 @@ python kaggle/train_gru.py
 | Recorded | `data/export_outputs/h5_export_outputs/` | 4.2, 4.3, GRU baseline |
 | PARRM-cleaned | `data/features/parrm_none/` | 4.3, 4.2.10 evaluation |
 | Semi-synthetic 10x | `data/semi_synthetic/parrm_amp10/h5_export_outputs/` (`lfp + 9 × parrm_artifact`) | 4.2.10 evaluation only |
-| Synthetic tones | `utils.add_stimulation_tones` (in-memory sine addition) | 4.2.6 training only |
+| Synthetic frequency augmentation | `utils.add_synthetic_frequencies` (in-memory sine addition) | 4.2.6 training only |
 
 ## Sub-tasks
 
 ### 4.1 Calibration Draws (`task4_1_draws.ipynb`)
-- Calls `utils.build_draws` to generate `results/draws.json` (v3, `query_definition = "fixed"`).
+- Calls `utils.build_draws` to generate `task4_results/draws.json` (v3, `query_definition = "fixed"`).
 - For each of the 14 test ON sessions, samples non-nested calibration draws of size $k \in \{2, 5, 10\}$ (10 draws each) and $k = 20$ (1 full-pool draw) from the 20-trial pool (blocks 1–2), totaling 434 partitions.
 - Evaluates all draws against a fixed 30-trial query (blocks 3–5); normalizes features using calibration trials only. Controls evaluate all 50 OFF trials.
 
@@ -65,7 +66,7 @@ python kaggle/train_gru.py
 - Uses `task3/task3_common.py` (`C.ridge_path`, `C.LAMBDAS`, `C.CLIP_Z = ±10`).
 - Selects a single ridge penalty on ON validation sessions and refits on the $k$ calibration trials of each draw for raw and PARRM-cleaned features.
 
-## Key Outputs (`results/`)
+## Key Outputs (`task4_results/`)
 
 - **Draws:** `draws.json`, `task4_1_draws_summary.csv`
 - **EEGNet:** `task4_2_eegnet_off.csv`, `task4_2_seeds.csv`, `task4_2_vs_ridge.csv`, `task4_2_eegnet_amp10.csv`, `task4_2_amp10_summary.csv`, `amp10_noise_variance.csv`, `amp10_noise_summary.csv`

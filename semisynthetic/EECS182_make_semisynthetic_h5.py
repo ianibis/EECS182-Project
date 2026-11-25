@@ -42,7 +42,7 @@ README = """# PARRM artifact amplification
 `LFP_10x = LFP_recorded + (scale - 1) * PARRM_artifact`, with `scale = 10`, applied only to
 the 35 channels kept for decoding and only to `/lfp`. Every other dataset and attribute is
 copied unchanged. The artifact is the measured PARRM template estimate, not a sine, and it
-is not the synthetic 3/20 Hz tone augmentation used in task 4.2. See
+is not the synthetic 3/20 Hz synthetic frequency augmentation used in task 4.2. See
 `semisynthetic/semi_synthetic_README.md` in the repository for the full description, the
 regeneration command and the limits.
 

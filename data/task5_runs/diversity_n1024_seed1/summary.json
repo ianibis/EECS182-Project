@@ -1,0 +1,13 @@
+{
+  "name": "diversity_n1024_seed1",
+  "best_val_r2": 0.1384055274228255,
+  "seed": 1,
+  "iterations": 6000,
+  "batch_size": 8,
+  "learning_rate": 0.0003,
+  "warmup_iterations": 300,
+  "weight_decay": 0.01,
+  "grad_clip": 1.0,
+  "eval_every": 500,
+  "max_context": 20
+}

@@ -120,7 +120,7 @@ def build():
 
     note_y = oy + BOX_H + 14
     parts.append(f'<text x="{PAD}" y="{note_y}" class="note">R2 = (R2_vx + R2_vy) / 2. '
-                 f'Tones: a random-phase 3 or 20 Hz sine added to clean training trials '
+                 f'Frequencies: a random-phase 3 or 20 Hz sine added to clean training trials '
                  f'(Appendix B); targets unchanged.</text>')
     total = note_y + 12
     svg = [

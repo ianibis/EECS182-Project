@@ -1,0 +1,16 @@
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+Check: largest difference from scores_val.csv is 0.00e+00
+Saved 480 rows to /home/dongc1/workspace/EECS182-Project/data/task5_predictions/first_model_predictions_val.npz (12 MB)
+DONE
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+Check: largest difference from scores_test.csv is 0.00e+00
+Saved 1056 rows to /home/dongc1/workspace/EECS182-Project/data/task5_predictions/first_model_predictions_test.npz (26 MB)
+DONE

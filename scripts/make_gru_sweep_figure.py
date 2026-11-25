@@ -1,6 +1,6 @@
 """Plot the GRU width/depth sweep: hidden units against validation R2.
 
-Reads task4/results/gru_sweep.csv, the twelve settings behind Table 1 of the report
+Reads task4_results/gru_sweep.csv, the twelve settings behind Table 1 of the report
 (hidden 64/128/256 x layers 1/2 x dropout 0/0.2, one seed, three validation days), and
 writes reports/figures/fig_gru_sweep.png. One line per (layers, dropout) pair so the
 width effect is visible without collapsing the other two knobs.
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SOURCE = os.path.join(ROOT, 'task4', 'results', 'gru_sweep.csv')
+SOURCE = os.path.join(ROOT, 'task4_results', 'gru_sweep.csv')
 OUT = os.path.join(ROOT, 'reports', 'figures', 'fig_gru_sweep.png')
 
 SERIES = [

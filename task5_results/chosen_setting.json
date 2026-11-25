@@ -1,0 +1,7 @@
+{
+  "name": "diag_6000",
+  "learning_rate": 0.0003,
+  "warmup": 300,
+  "iterations": 6000,
+  "best_val_r2": 0.15337075913945833
+}

@@ -38,7 +38,7 @@ TASK4_DIR = os.path.dirname(os.path.abspath(__file__))  # .../task4
 PROJECT_ROOT = os.path.dirname(TASK4_DIR)  # repository root
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")  # earlier baseline artifacts
-TASK4_RESULTS = os.path.join(TASK4_DIR, "results")
+TASK4_RESULTS = os.path.join(PROJECT_ROOT, "task4_results")  # committed CSVs and draws
 CHECKPOINT_DIR = os.path.join(TASK4_DIR, "checkpoints")
 TRAINING_LOG_DIR = os.path.join(TASK4_DIR, "training_logs")
 DRAWS_PATH = os.path.join(TASK4_RESULTS, "draws.json")
@@ -702,7 +702,13 @@ def _notebook_model_cells():
 
 
 def _export_notebook_models(names=NOTEBOOK_MODEL_NAMES):
-    namespace = dict(np=np, torch=torch, nn=nn, __name__="task4_notebook_models")
+    # The namespace carries whatever the MODELS cells expect from the outside world: torch,
+    # np, and braindecode's EEGNet, which CausalEEGNet wraps.
+    from braindecode.models import EEGNet
+
+    namespace = dict(
+        np=np, torch=torch, nn=nn, EEGNet=EEGNet, __name__="task4_notebook_models"
+    )
     for source in _notebook_model_cells():
         exec(compile(source, "<notebook model cell>", "exec"), namespace)
     missing = [name for name in names if name not in namespace]
@@ -1033,8 +1039,8 @@ EARLY_STOP_DELTA = 1e-4
 STIMULATION_FREQ_HZ = (3.0, 20.0)
 STIMULATION_FREQ_MAG = (0.5, 3.0)
 EEGNET_METHOD = "eegnet"
-# The stored label stays "eegnet_stimulation_tones" so existing result files still resolve.
-EEGNET_FREQ_AUGMENTATION = "eegnet_stimulation_tones"
+# The stored label stays "eegnet_synthetic_frequencies" so existing result files still resolve.
+EEGNET_FREQ_AUGMENTATION = "eegnet_synthetic_frequencies"
 EEGNET_ENSEMBLE_METHOD = "eegnet_ensemble"
 ENSEMBLE_SEED = -1  # seed column value for a score averaged over every seed
 EEGNET_DEFAULT_SETTINGS = dict(
@@ -1262,7 +1268,7 @@ def best_eegnet_settings(sweep):
     )
 
 
-def add_stimulation_tones(
+def add_synthetic_frequencies(
     dataset,
     seed,
     strength_range=STIMULATION_FREQ_MAG,

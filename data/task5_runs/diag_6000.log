@@ -1,0 +1,13 @@
+[diag_6000] 822,546 parameters, 6000 iterations
+[diag_6000] step   500  train 0.9596  holdout 0.9990  val R2 +0.0565  vs labels-only -0.0257  context gain (k20-k0) +0.0052  1.1 min *
+[diag_6000] step  1000  train 0.9363  holdout 0.8632  val R2 +0.0742  vs labels-only -0.0081  context gain (k20-k0) +0.0057  2.2 min *
+[diag_6000] step  1500  train 0.9122  holdout 0.8444  val R2 +0.1048  vs labels-only +0.0226  context gain (k20-k0) +0.0207  3.2 min *
+[diag_6000] step  2000  train 0.8668  holdout 0.8553  val R2 +0.1150  vs labels-only +0.0328  context gain (k20-k0) +0.0229  4.3 min *
+[diag_6000] step  2500  train 0.8293  holdout 0.7883  val R2 +0.1423  vs labels-only +0.0601  context gain (k20-k0) +0.0418  5.4 min *
+[diag_6000] step  3000  train 0.8118  holdout 0.7968  val R2 +0.1446  vs labels-only +0.0623  context gain (k20-k0) +0.0459  6.4 min *
+[diag_6000] step  3500  train 0.7755  holdout 0.7950  val R2 +0.1387  vs labels-only +0.0565  context gain (k20-k0) +0.0363  7.5 min
+[diag_6000] step  4000  train 0.7710  holdout 0.7733  val R2 +0.1423  vs labels-only +0.0601  context gain (k20-k0) +0.0425  8.5 min
+[diag_6000] step  4500  train 0.7610  holdout 0.8063  val R2 +0.1504  vs labels-only +0.0682  context gain (k20-k0) +0.0488  9.5 min *
+[diag_6000] step  5000  train 0.7482  holdout 0.7876  val R2 +0.1486  vs labels-only +0.0663  context gain (k20-k0) +0.0490  10.6 min
+[diag_6000] step  5500  train 0.7508  holdout 0.7738  val R2 +0.1534  vs labels-only +0.0711  context gain (k20-k0) +0.0506  11.6 min *
+[diag_6000] step  6000  train 0.7413  holdout 0.7944  val R2 +0.1512  vs labels-only +0.0690  context gain (k20-k0) +0.0489  12.6 min
